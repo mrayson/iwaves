@@ -5,22 +5,10 @@ Internal wave functions
 import numpy as np
 from scipy import linalg
 from scipy.interpolate import interp1d
+from scipy.integrate import solve_bvp
 
 GRAV = 9.81
 RHO0 = 1020.
-
-###########
-# Stratification functions
-###########
-def ideal_rho_tanh(z, rho0, drho, dp, L):
-    return drho/2 * (1 - np.tanh(dp + dp*z/L ) ) + rho0
-
-def lamb_tanh_rho(z, rho0, dp, z1, h1, H=None):
-    # Assumes z is negative down
-    if H is None:
-        H = z.min()
-    zhat = z-H
-    return rho0*(1 - dp*(1 + np.tanh( (zhat-z1)/h1) ) )
 
 ###########
 # Wave shape
@@ -95,6 +83,152 @@ def wave_init_phi(x, rhoz, drho_dz, phi_n, cn, z, d, a_0, L_w, mode=0):
     return Frho(eta), phi
     #return rhoz[:,np.newaxis] - rho_pr, phi
 
+#####
+# Nondimensional parameters (Lamb definitions)
+#####
+def calc_alpha(phi, c, N2, dz):
+    """
+    Holloway et al 1999 nonlinearity parameter
+    """
+    phi_z = np.gradient(phi,-dz)
+    num = 3*c*np.trapz( phi_z**3., dx=dz)
+    den = 2*np.trapz( phi_z**2., dx=dz)
+
+    return num/den
+
+
+def calc_r20(phi, c, N2, dz):
+    phi_z = np.gradient(phi,dz)
+    S_20 = calc_S20(phi, c, N2, dz)
+
+    num = c*np.trapz( phi*S_20, dx=dz)
+    den = 2*np.trapz( phi_z**2., dx=dz)
+    return num/den
+
+
+def calc_r10(phi, c, N2, dz):
+    """
+    alpha in most other papers
+    """
+    phi_z = np.gradient(phi,dz)
+    num = 3*np.trapz( phi_z**3., dx=dz)
+    den = 4*np.trapz( phi_z**2., dx=dz)
+
+    #N2_z = np.gradient(N2,-dz)
+    #S10 = N2_z/c**3*phi**2
+    #num = c*np.trapz(phi*S10, dx=dz)
+    #den = 2*np.trapz(phi_z**2., dx=dz)
+    return num/den
+
+def calc_r01(phi, c, dz):
+    phi_z = np.gradient(phi, dz)
+    num = -c*np.trapz( phi**2., dx=dz)
+    den = 2*np.trapz( phi_z**2., dx=dz)
+    #num = -c*np.sum( phi**2. * dz)
+    #den = 2*np.sum( phi_z**2. * dz)
+
+    return num/den
+
+def calc_phi01_rhs(phi, c, N2, dz):
+    r_01 = calc_r01(phi, c, dz)        
+
+    RHS = -2*r_01*N2/c**3.*phi - phi
+
+    return RHS
+
+def calc_phi10_rhs(phi, c, N2, dz):
+    r_10 = calc_r10(phi, c, N2, dz)
+    dN2_dz = np.gradient(N2,-dz)
+    c3i = 1/c**3.
+
+    RHS = -2*r_10*N2*c3i * phi
+    RHS += c3i*dN2_dz*phi**2.
+
+    return RHS
+
+def calc_D01(phi, c, N2, dz):
+    """
+    Calculates the first order nonlinear term for buoyancy
+    """
+    
+    r_01 = calc_r01(phi, c, dz) 
+    
+    phi01rhs = calc_phi01_rhs(phi, c, N2, dz)
+    phi01 = solve_phi_bvp(phi01rhs, N2, c, dz)
+    
+    D01 = N2/c*phi01 + r_01*N2/c**2.*phi 
+
+    return D01#/N2
+
+def calc_D10(phi, c, N2, dz):
+    """
+    Calculates the first order nonlinear term for buoyancy
+    """
+    
+    dN2_dz = np.gradient(N2,-dz)
+    r_10 = calc_r10(phi, c, N2, dz) 
+    
+    phi10rhs = calc_phi10_rhs(phi, c, N2, dz)
+    phi10 = solve_phi_bvp(phi10rhs, N2, c, dz)
+    
+    D10 = N2/c*phi10 + r_10*N2/c**2.*phi - 1/(2*c**2)*dN2_dz*phi**2.
+
+    return D10#/N2
+
+def calc_S20(phi, c, N2, dz):
+    """
+    Calculates the second order term
+    """
+    
+    dN2_dz = np.gradient(N2, -dz)
+    d2N2_dz2 = np.gradient(dN2_dz, -dz)
+
+    phi_z = np.gradient(phi, -dz)
+
+    r_10 = calc_r10(phi, c, N2, dz) 
+    
+    phi10rhs = calc_phi10_rhs(phi, c, N2, dz)
+    phi10 = solve_phi_bvp(phi10rhs, N2, c, dz)
+    
+    S20 = 2/c**3.*dN2_dz * phi * phi10\
+        - 1/(2*c**4) * d2N2_dz2 * phi**3 \
+        + 3*r_10/c**4 * dN2_dz * phi**2 \
+        - r_10*N2/c**4 * phi * phi_z \
+        -8/3. * r_10 * N2/c**3 * phi10 \
+        -4*r_10**2*N2/c**4 * phi
+        #- r_10*N2/c**4 * phi * phi_z \ # Note sure about this term???
+
+    return S20#/N2
+
+def calc_T10(phi, c, N2, dz):
+    """
+    Calculates the Grimshaw and co nonlinear correction term
+    """
+    
+    dN2_dz = np.gradient(N2,-dz)
+    alpha = calc_alpha(phi, c, N2, dz) 
+    
+    RHS = alpha*N2/c**4. * phi
+    RHS += dN2_dz/c**3. *phi**2.
+
+    T10 = solve_phi_bvp(RHS, N2, c, dz)
+    
+    # normalize ??
+    #T10 = T10 * phi/np.mean(phi)
+    #T10 = T10 * np.mean(phi)/phi
+    
+    # Normalize so the max(phi)=1
+    #T10 = T10 / np.abs(T10).max()
+    #T10 *= np.sign(T10.sum())
+    
+    #T10 *= (1-phi)
+    
+    return -T10
+
+
+#####
+# Nondimensional parameters
+#####
 def wave_delta_star(phi, dz):
     """
     Nonlinearity parameter - Liu, 1988
@@ -155,6 +289,105 @@ def wave_he(phi, dz):
     
     return np.sqrt(3.0 * num / den)
 
+#####
+# Boundary value problem solvers
+#####
+def solve_phi_bvp(B, N2, c, dz):
+    """
+    Use the scipy integration function
+    """
+
+
+    nx = N2.shape[0]
+    x = np.linspace(0, nx*dz, nx)
+    k = -N2/c**2.
+    Fk = interp1d(x,k)
+    Fb = interp1d(x,B)
+    def fun(x, y):
+        return np.vstack([y[1], Fk(x) * y[0] + Fb(x)])
+
+    def bc(ya, yb):
+        return np.array([ ya[0], yb[0] ])
+
+    ya = np.zeros((2,x.size))
+
+    res_a = solve_bvp(fun, bc, x, ya)
+
+    return res_a['y'][0,:]
+
+
+def solve_phi_bvp_fd(B, N2, c, dz):
+    """
+    Finite-difference  solver for the higher-order vertical structure
+    functions
+
+    !!!!DOES NOT WORK PROPERLY!!!!
+    """
+
+    nz = B.shape[0] 
+    dz2 = 1/dz**2
+    
+    ### Construct the LHS matrix, A 
+    # (use a dense matrix for now)
+    A = np.diag(dz2*np.ones((nz-1)),-1) +\
+        np.diag(-2*dz2*np.ones((nz,)) +\
+        N2/c**2*np.ones((nz,)) ,0) + \
+        np.diag(dz2*np.ones((nz-1)),1)
+
+    ## BC's
+    #eps = 1e-10
+    #A[0,0] = -1
+    #A[0,1] = eps
+    #A[-1,-1] = -1
+    #A[-1,-2] = eps
+    
+    #B[0] = eps
+    #B[-1] = eps
+
+    return linalg.solve(A, B)
+
+    #nz = B.shape[0] - 2
+    #dz2 = 1/dz**2
+
+    #### Construct the LHS matrix, A 
+    ## (use a dense matrix for now)
+    #A = np.diag(dz2*np.ones((nz-1)),-1) +\
+    #    np.diag(-2*dz2*np.ones((nz,)) +\
+    #    N2[1:-1]/c**2*np.ones((nz,)) ,0) + \
+    #    np.diag(dz2*np.ones((nz-1)),1)
+
+    ## BC's
+    ##eps = 1e-10
+    ##A[0,0] = eps
+    ##A[0,1] = eps
+    ##A[-1,-1] = eps
+    ##A[-1,-2] = eps
+
+    #soln = np.zeros((nz+2,))
+    #soln[1:-1] = linalg.solve(A, B[1:-1])
+    #return soln
+    
+    #### Use the direct banded solver
+    #A = np.zeros((3,nz))
+    #A[0,:] = dz2*np.ones(nz)
+    #A[1,:] = -2*dz2*np.ones(nz)
+    #A[1,:] += N2[1:-1]/c**2*np.ones(nz)
+    #A[2,:] = dz2*np.ones(nz)
+    #
+    ##A[0,0]=eps
+    ##A[1,0]=eps
+    ##A[2,-1] = eps
+    ##A[1,-1] = eps
+    #
+    #soln = np.zeros((nz+2,))
+    #soln[1:-1] = linalg.solve_banded((1,1), A, B[1:-1])
+    #return soln
+    
+
+
+#####
+# Eigenvalue solver functions
+#####
 def iwave_modes(N2, dz):
     """
     Calculates the eigenvalues and eigenfunctions to the internal wave eigenvalue problem:
@@ -197,4 +430,47 @@ def iwave_modes(N2, dz):
 
     return phi[:,idx], cn
 
-      
+def iwave_modes_nondim(N2, dz, d, nondim=True):
+    """
+    Calculates the eigenvalues and eigenfunctions to the internal wave eigenvalue problem:
+    
+    $$
+    \left[ \frac{d^2}{dz^2} - \frac{1}{c_0} \bar{\rho}_z \right] \phi = 0
+    $$
+    
+    with boundary conditions 
+    """
+
+    nz = N2.shape[0] # Remove the surface values
+    dz2 = 1/dz**2
+
+    # Construct the LHS matrix, A
+    A = np.diag(-1*dz2*np.ones((nz-1)),-1) + \
+        np.diag(2*dz2*np.ones((nz,)),0) + \
+        np.diag(-1*dz2*np.ones((nz-1)),1)
+
+    # BC's
+    eps = 1e-10
+    A[0,0] = -1.
+    A[0,1] = 0.
+    A[-1,-1] = -1.
+    A[-1,-2] = 0.
+
+    # Construct the RHS matrix i.e. put N^2 along diagonals
+    B = np.diag(N2,0)
+
+    # Solve... (use scipy not numpy)
+    w, phi = linalg.eig(A, b=B)
+
+    c = 1. / np.power(w, 0.5) # since term is ... + N^2/c^2 \phi
+
+    # Sort by the eigenvalues
+    idx = np.argsort(c)[::-1] # descending order
+
+    # Calculate the actual phase speed
+    cn = np.real( c[idx] )
+
+    return phi[:,idx], cn
+
+
+
