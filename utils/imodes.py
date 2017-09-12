@@ -6,7 +6,9 @@ Internal dynamic modes class
 
 from .isw import *
 from .tools import grad_z
-from scipy.interpolate import PchipInterpolator
+from density import InterpDensity 
+
+import gsw
 
 import pdb
 
@@ -14,32 +16,39 @@ class IWaveModes(object):
     """
     Wrapper class for calculation of modes
     """
-    def __init__(self, rho, z, salt=None):
+    def __init__(self, rho, z, salt=None, density_func=InterpDensity):
         if salt is None:
             self.rho = rho
         else:
-            raise Exception, NotImplementError
             # Compute density from the nonlinear EOS
+            self.rho = gsw.rho(salt, rho, z)
+
+        # Check monotonicity of z
+        assert np.all(np.diff(z)>0),\
+                'input z must be increasing, z=0 at surface and positive up'
 
         self.z = z
 
-        self.Fi = PchipInterpolator(z, rho, axis=0, extrapolate=True)
+        self.Fi = density_func(self.rho, self.z)
  
     def __call__(self, zmax, dz, mode):
         """
         Compute the mode eigenfunction/value on the new vertical grid
         """
 
-        assert zmax <= self.z.max(), 'zmax must be < %f'%self.z.max()
+        dz = float(dz) # Make sure of this (new numpy is unforgiving...)
+        mode = int(mode)
+
+        #assert zmax <= self.z.min(), 'zmax must be > %f'%self.z.min()
+        assert zmax < 0, 'Maximum depth must be negative (<0)'
 
         # Interpolate the stored density onto the new depths
-        Z = np.arange(0,zmax+dz,dz)
+        Z = np.arange(zmax,dz, dz)
 
         rhoZ = self.Fi(Z)
 
-
         # Z needs to be negative so N^2 is positive
-	drho_dz = grad_z(rhoZ, -Z,  axis=0)
+	drho_dz = grad_z(rhoZ, Z,  axis=0)
 	N2 = -GRAV*drho_dz/RHO0
 
         phi, cn = iwave_modes(N2, dz)
@@ -57,6 +66,8 @@ class IWaveModes(object):
 
         # Store the structure
         self.mode = mode
+        self.N2 = N2
+        self.rhoZ = rhoZ
         self.phi = phi_1
         self.c1 = c1
         self.Z = Z

@@ -7,6 +7,8 @@ from scipy import linalg
 from scipy.interpolate import interp1d
 from scipy.integrate import solve_bvp
 
+import pdb
+
 GRAV = 9.81
 RHO0 = 1020.
 
@@ -98,7 +100,7 @@ def calc_alpha(phi, c, N2, dz):
 
 
 def calc_r20(phi, c, N2, dz):
-    phi_z = np.gradient(phi,dz)
+    phi_z = np.gradient(phi,-np.abs(dz))
     S_20 = calc_S20(phi, c, N2, dz)
 
     num = c*np.trapz( phi*S_20, dx=dz)
@@ -110,9 +112,9 @@ def calc_r10(phi, c, N2, dz):
     """
     alpha in most other papers
     """
-    phi_z = np.gradient(phi,dz)
-    num = 3*np.trapz( phi_z**3., dx=dz)
-    den = 4*np.trapz( phi_z**2., dx=dz)
+    phi_z = np.gradient(phi,-np.abs(dz))
+    num = -3*np.trapz( phi_z**3., dx=np.abs(dz))
+    den = 4*np.trapz( phi_z**2., dx=np.abs(dz))
 
     #N2_z = np.gradient(N2,-dz)
     #S10 = N2_z/c**3*phi**2
@@ -121,9 +123,9 @@ def calc_r10(phi, c, N2, dz):
     return num/den
 
 def calc_r01(phi, c, dz):
-    phi_z = np.gradient(phi, dz)
-    num = -c*np.trapz( phi**2., dx=dz)
-    den = 2*np.trapz( phi_z**2., dx=dz)
+    phi_z = np.gradient(phi, -np.abs(dz))
+    num = -c*np.trapz( phi**2., dx=np.abs(dz))
+    den = 2*np.trapz( phi_z**2., dx=np.abs(dz))
     #num = -c*np.sum( phi**2. * dz)
     #den = 2*np.sum( phi_z**2. * dz)
 
@@ -138,7 +140,8 @@ def calc_phi01_rhs(phi, c, N2, dz):
 
 def calc_phi10_rhs(phi, c, N2, dz):
     r_10 = calc_r10(phi, c, N2, dz)
-    dN2_dz = np.gradient(N2,-dz)
+
+    dN2_dz = np.gradient(N2,-np.abs(dz))
     c3i = 1/c**3.
 
     RHS = -2*r_10*N2*c3i * phi
@@ -165,7 +168,7 @@ def calc_D10(phi, c, N2, dz):
     Calculates the first order nonlinear term for buoyancy
     """
     
-    dN2_dz = np.gradient(N2,-dz)
+    dN2_dz = np.gradient(N2,-np.abs(dz))
     r_10 = calc_r10(phi, c, N2, dz) 
     
     phi10rhs = calc_phi10_rhs(phi, c, N2, dz)

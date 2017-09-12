@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import sparse, linalg
 from scipy.interpolate import interp1d
-import xray
+import xarray as xray
 
 import matplotlib.pyplot as plt
 
@@ -40,7 +40,6 @@ class KdV(object):
 
     # Initial wave amplitude
     a0 = 20.
-    wavefunc = None
     x0 = None
 
     # Initial wave length
@@ -65,9 +64,6 @@ class KdV(object):
     # extended KdV solver
     ekdv = False
 
-    # Time stepper 'EX1',AB2, AB3
-    timesolver = 'AB3'
-    
     # Horizontal eddy viscosity
     nu_H = 0.0
 
@@ -155,7 +151,7 @@ class KdV(object):
         # Initialise the wave function B(x,t)
         #wavefunc = iwaves.sine # Hardwire for now...
         if self.x0 is None:
-            self.x0 = -self.Lw/2
+            self.x0 = self.Lw/2
 
         self.B_n_m2, self.B_n_m1, self.B, self.B_n_p1 = self.init_wave(wavefunc)
     
@@ -211,24 +207,6 @@ class KdV(object):
         # First-order time stepping
         #self.B_n_p1[:] = self.B + self.dt_s * M.dot(self.B)
 
-        # Generic solver
-        def get_weights(mode):
-            if mode == 'EX1':
-                return 0, 0, 1
-            elif mode == 'AB2':
-                return 0, -0.5, 1.5
-            elif mode == 'AB3':
-                return 5/12., -4/3., 23./12.
-        
-        #c0,c1,c2 = get_weights(self.timesolver)
-        #self.B_n_p1[:] = self.B + self.dt_s * (\
-        #        c0*M.dot(self.B_n_m2) +\
-        #        c1*M.dot(self.B_n_m1) +\
-        #        c2*M.dot(self.B)\
-        #    )
-
-        # Do stuff here...
-
         # Check solutions
         if np.any( np.isnan(self.B_n_p1)):
             return -1
@@ -249,7 +227,6 @@ class KdV(object):
         r01 = calc_r01(self.phi_1, self.c1, self.dz_s)
         r10 = calc_r10(self.phi_1, self.c1, self.N2, self.dz_s)
         #r10 = alpha(self.phi_1, self.c1, self.N2, self.dz_s)
-
         r20 = calc_r20(self.phi_1, self.c1, self.N2, self.dz_s)
 
 	return r01, r10, r20
@@ -485,8 +462,8 @@ class KdV(object):
         """
         Calculate the buoyancy frequency
         """
-        drho_dz = np.gradient(self.rhoz, self.dz)
-        N2 = GRAV*drho_dz
+        drho_dz = np.gradient(self.rhoz, -np.abs(self.dz))
+        N2 = -GRAV*drho_dz
         if not self.nondim:
             N2/=RHO0
 
@@ -566,40 +543,5 @@ class KdV(object):
         attrs.update({'Description':'1D KdV Solution'})
 
         return xray.Dataset({'B':B,'rhoz':rhoz}, attrs=attrs)
-
-##################
-# IO routines
-##################
-
-def from_netcdf(kdvfile):
-    """
-    Load a KdV object from a pre-computed netcdf file
-    """
-    
-    # Load the data file (hope it's in the right format)
-    kdvx = xray.open_dataset(kdvfile)
-    
-    # These are the attributes that KdV requires
-    attrs = ['L_d','Nx','Lw','a0','Cmax','nu_H','x0']
-
-    kwargs = {}
-    for aa in attrs:
-        kwargs.update({aa:getattr(kdvx,aa)})
-
-    z = kdvx.z.values
-    rhoz = kdvx.rhoz.values
-
-    # Let the class compute everything else...
-    kdv = KdV(rhoz, z, **kwargs)
-
-    # Set the amplitude function
-    kdv.B[:] = kdvx.B.values
-    
-    return kdv
-
-    
-
-
-
 
 
