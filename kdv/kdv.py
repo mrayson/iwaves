@@ -143,9 +143,9 @@ class KdV(object):
 
 	####
 	# Calculate the nonlinear correction terms
-	self.phi01, self.phi10 = self.calc_nonlinstructure()
+	self.phi01, self.phi10, self.phi20 = self.calc_nonlinstructure()
 
-        self.D01, self.D10 = self.calc_buoyancy_coeffs()
+        self.D01, self.D10, self.D20 = self.calc_buoyancy_coeffs()
 
         #########
         # Initialise the wave function B(x,t)
@@ -235,8 +235,9 @@ class KdV(object):
 
         D01 = calc_D01(self.phi_1, self.c1, self.N2, self.dz_s)
         D10 = calc_D10(self.phi_1, self.c1, self.N2, self.dz_s)
+        D20 = calc_D20(self.phi_1, self.c1, self.N2, self.dz_s)
 
-        return D01,D10
+        return D01,D10,D20
 
     def build_matrix_sparse(self, An):
         """
@@ -364,6 +365,9 @@ class KdV(object):
         if nonlinear:
             psi += self.epsilon * B[:,np.newaxis]**2. * self.phi10 
             psi += self.mu * B_xx[:,np.newaxis] * self.phi01 
+
+            if self.ekdv:
+                psi += self.epsilon * B[:,np.newaxis]**3. * self.phi20
         
         if self.nondim:
             psi = psi/(self.epsilon*self.U*self.H)
@@ -377,8 +381,12 @@ class KdV(object):
 
         rhs10 = calc_phi10_rhs(self.phi_1, self.c1, self.N2, self.dz_s)
         phi10 = solve_phi_bvp(rhs10, self.N2, self.c1, self.dz_s)
+
+        #if self.ekdv:
+        rhs20 = calc_phi20_rhs(self.phi_1, self.c1, self.N2, self.dz_s)
+        phi20 = solve_phi_bvp(rhs20, self.N2, self.c1, self.dz_s)
         
-        return phi01, phi10
+        return phi01, phi10, phi20
     
     def calc_velocity(self, nonlinear=True):
         """
@@ -417,6 +425,10 @@ class KdV(object):
         
             #D01 = calc_D01(self.phi_1, self.c1, self.N2, self.dz_s)
             b += self.mu*A_xx[:,np.newaxis]*self.D01
+
+            if self.ekdv:
+                b += self.epsilon*A**3.*self.D20
+                
         
         if self.nondim:
             b *= self.H/(self.epsilon*self.U**2.)

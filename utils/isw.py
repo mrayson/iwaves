@@ -149,6 +149,12 @@ def calc_phi10_rhs(phi, c, N2, dz):
 
     return RHS
 
+def calc_phi20_rhs(phi, c, N2, dz):
+    r_20 = calc_r20(phi, c, N2, dz)
+    S_20 = calc_S20(phi, c, N2, dz)
+
+    return -r_20*N2/c**3. + S_20
+
 def calc_D01(phi, c, N2, dz):
     """
     Calculates the first order nonlinear term for buoyancy
@@ -178,6 +184,22 @@ def calc_D10(phi, c, N2, dz):
 
     return D10#/N2
 
+def calc_D20(phi, c, N2, dz):
+    """
+    Calculates the second order nonlinear term for buoyancy
+    """
+    r_20 = calc_r20(phi, c, N2, dz) 
+    
+    phi20rhs = calc_phi20_rhs(phi, c, N2, dz)
+    phi20 = solve_phi_bvp(phi20rhs, N2, c, dz)
+
+    T_20 = calc_T20(phi, c, N2, dz)
+    
+    D20 = N2/c*phi20 + r_20*N2/c**2.*phi + T_20
+
+    return D20
+ 
+
 def calc_S20(phi, c, N2, dz):
     """
     Calculates the second order term
@@ -202,6 +224,29 @@ def calc_S20(phi, c, N2, dz):
         #- r_10*N2/c**4 * phi * phi_z \ # Note sure about this term???
 
     return S20#/N2
+
+def calc_T20(phi, c, N2, dz):
+    """
+    Calculates the second order term
+    """
+    
+    dN2_dz = np.gradient(N2, -dz)
+    d2N2_dz2 = np.gradient(dN2_dz, -dz)
+
+    phi_z = np.gradient(phi, -dz)
+
+    r10 = calc_r10(phi, c, N2, dz) 
+    
+    phi10rhs = calc_phi10_rhs(phi, c, N2, dz)
+    phi10 = solve_phi_bvp(phi10rhs, N2, c, dz)
+
+    return -dN2_dz/c**2.*phi*phi10\
+        -r10*dN2_dz/c**3.*phi**2.\
+        +1/6.*d2N2_dz2/c**3.*phi**3.\
+        +r10/3.*N2/c**3. * phi * phi_z\
+        +4/3.*r10*N2/c**2*phi10\
+        +4/3.*r10**2.*N2/c**3.*phi
+ 
 
 def calc_T10(phi, c, N2, dz):
     """
