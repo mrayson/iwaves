@@ -21,7 +21,7 @@ class IWaveModes(object):
             self.rho = rho
         else:
             # Compute density from the nonlinear EOS
-            self.rho = gsw.rho(salt, rho, z)
+            self.rho = gsw.pot_rho_t_exact(salt, rho, z)
 
         # Check monotonicity of z
         assert np.all(np.diff(z)>0),\
@@ -40,10 +40,12 @@ class IWaveModes(object):
         mode = int(mode)
 
         #assert zmax <= self.z.min(), 'zmax must be > %f'%self.z.min()
-        assert zmax < 0, 'Maximum depth must be negative (<0)'
+        assert zmax < 0, 'Maximum depth must be negative (< 0)'
+        assert dz > 0, 'dz must be positive (> 0)'
 
         # Interpolate the stored density onto the new depths
-        Z = np.arange(zmax,dz, dz)
+        # Depth array needs to be ordered from the surface down
+        Z = np.arange(0, zmax - dz, -dz)
 
         rhoZ = self.Fi(Z)
 

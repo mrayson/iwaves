@@ -2,6 +2,7 @@
 KdV Solution viewer
 """
 
+import sys
 from iwaves import from_netcdf
 
 from datetime import datetime
@@ -29,11 +30,13 @@ class viewer(object):
     tstep = 0
     hscale = 0.5
     uscale = 2.
-    xaxis = 'distance'
+    xaxis = 'time'
     cmap = 'RdBu'
     rholevs = np.arange(20,30,0.25)
 
     def __init__(self, ncfile, **kwargs):
+        self.__dict__.update(**kwargs)
+
         self.mykdv, self.Bt = from_netcdf(ncfile)
 
         self.Nt = self.Bt.time.shape[0]
@@ -46,7 +49,8 @@ class viewer(object):
         self.clim = [-umax, umax]
 
         if self.xaxis == 'time':
-            self.x = self.mykdv.x/self.mykdv.c1/3600. # Time hours
+            # Time should be backwards
+            self.x = -self.mykdv.x/self.mykdv.c1/3600. # Time hours
             xlabel = 'Time [h]'
         elif self.xaxis == 'distance':
             self.x = self.mykdv.x
@@ -131,6 +135,12 @@ class viewer(object):
             self.fig.canvas.draw_idle()
 
 
+if __name__=='__main__':
+    
+
+    ncfile = sys.argv[1]
+    print ncfile
+    viewer(ncfile)
         
 
 

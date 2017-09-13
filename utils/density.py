@@ -4,7 +4,7 @@ Density fitting and interpolation classes
 
 import numpy as np
 from scipy.optimize import leastsq
-from scipy.interpolate import PchipInterpolator
+from scipy.interpolate import PchipInterpolator, CubicSpline
 
 import pdb
 
@@ -25,20 +25,15 @@ def lamb_tanh_rho(z, rho0, dp, z1, h1, H=None):
     return rho0*(1 - dp*(1 + np.tanh( (zhat-z1)/h1) ) )
 
 def double_tanh_rho(z, rho1, rho2, z1, z2, h1, h2):
-    H = z.min()
-    H = np.abs(H)
-    zhat = z - H
-    z1 = z1*H
-    z2 = z2*H
-    h1 = h1*H
-    h2 = h2*H
 
-    return rho1/2*(1+np.tanh( (z+z1)/h1)) +\
-        rho2/2*(1+np.tanh( (z+z2)/h2))
+    return rho1/2*(1-np.tanh( (z+z1)/h1)) +\
+        rho2/2*(1-np.tanh( (z+z2)/h2))
 
 def fdiff(coeffs, rho, z ):
     #soln = ideal_rho_tanh(z, rho0, coeffs[0], coeffs[1], coeffs[2])
-    soln = lamb_tanh_rho(z, coeffs[0], coeffs[1], coeffs[2], coeffs[3])
+    #soln = lamb_tanh_rho(z, coeffs[0], coeffs[1], coeffs[2], coeffs[3])
+    #soln = lamb_tanh_rho(z, *coeffs)
+    soln = double_tanh_rho(z, *coeffs)
     return rho - soln
 
 def fit_rho(rho, z):
@@ -56,14 +51,17 @@ def fit_rho(rho, z):
         f0: tuple with analytical parameters
     """
 
-    rho0 = rho.max()
+    rho0 = rho.min()
+    rhotry = rho - rho0
     #drho = rho.max()-rho.min()
-    initguess = [rho0, 1e-3, 40., 100.]
+    #initguess = [rho0, 1e-3, 40., 100.] # lamb stratification function
+    initguess = [0.01, 0.01, 1., 2., 10., 10.] # double tanh guess
     f0,cov_x,info,mesg,err =\
-        leastsq(fdiff, initguess, args=(rho, z), \
+        leastsq(fdiff, initguess, args=(rhotry, z), \
         full_output=True)
 
-    rhofit = lamb_tanh_rho(z, f0[0], f0[1], f0[2], f0[3])
+    #rhofit = lamb_tanh_rho(z, *f0)
+    rhofit = double_tanh_rho(z, *f0) + rho0
     return rhofit, f0
 
 class FitDensity(object):
@@ -72,12 +70,13 @@ class FitDensity(object):
     """
     def __init__(self, rho, z):
 
+        self.rho0 = rho.min()
         rhofit, self.f0 = fit_rho(rho, z)
 
     def __call__(self, Z):
 
         f0 = self.f0
-        return lamb_tanh_rho(Z, f0[0], f0[1], f0[2], f0[3])
+        return double_tanh_rho(Z, *f0) + self.rho0
 
 class InterpDensity(object):
     """
@@ -86,7 +85,8 @@ class InterpDensity(object):
     
     def __init__(self, rho ,z):
 
-        self.Fi = PchipInterpolator(z, rho, axis=0, extrapolate=True)
+        #self.Fi = PchipInterpolator(z, rho, axis=0, extrapolate=True)
+        self.Fi = CubicSpline(z, rho, axis=0, bc_type='natural')
 
     def __call__(self, Z):
         
