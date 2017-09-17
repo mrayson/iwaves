@@ -3,7 +3,7 @@ Density fitting and interpolation classes
 """
 
 import numpy as np
-from scipy.optimize import leastsq
+from scipy.optimize import leastsq, least_squares
 from scipy.interpolate import PchipInterpolator, CubicSpline
 
 import pdb
@@ -24,14 +24,12 @@ def lamb_tanh_rho(z, rho0, dp, z1, h1, H=None):
     zhat = z-H
     return rho0*(1 - dp*(1 + np.tanh( (zhat-z1)/h1) ) )
 
-def double_tanh_rho(z, rho1, rho2, z1, z2, h1, h2):
+def double_tanh_rho(z, rho0, rho1, rho2, z1, z2, h1, h2):
 
-    return rho1/2*(1-np.tanh( (z+z1)/h1)) +\
+    return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1)) +\
         rho2/2*(1-np.tanh( (z+z2)/h2))
 
 def fdiff(coeffs, rho, z ):
-    #soln = ideal_rho_tanh(z, rho0, coeffs[0], coeffs[1], coeffs[2])
-    #soln = lamb_tanh_rho(z, coeffs[0], coeffs[1], coeffs[2], coeffs[3])
     #soln = lamb_tanh_rho(z, *coeffs)
     soln = double_tanh_rho(z, *coeffs)
     return rho - soln
@@ -52,16 +50,29 @@ def fit_rho(rho, z):
     """
 
     rho0 = rho.min()
-    rhotry = rho - rho0
-    #drho = rho.max()-rho.min()
+
+    #rhotry = rho
     #initguess = [rho0, 1e-3, 40., 100.] # lamb stratification function
-    initguess = [0.01, 0.01, 1., 2., 10., 10.] # double tanh guess
-    f0,cov_x,info,mesg,err =\
-        leastsq(fdiff, initguess, args=(rhotry, z), \
-        full_output=True)
+
+    # Use "least_squares" at it allows bounds on fitted parameters to be input
+    rhotry = rho # - rho0
+    initguess = [rho0, 0.01, 0.01, 1., 2., 10., 10.] # double tanh guess
+    H = np.abs(z).max()
+    #bounds = [(0,10.),(0,10.),(0,H),(0,H),(0,H/2),(0,H/2)]
+    bounds = [(rho0-1,0.,0.,0.,0.,0.,0.),(rho0+1,10.,10.,H,H,H/2,H/2)]
+    soln =\
+        least_squares(fdiff, initguess, args=(rhotry, z), \
+        bounds=bounds,\
+        )
+    f0 = soln['x']
+
+    #soln =  leastsq(fdiff, initguess, args=(rhotry, z), \
+    #    full_output=True)
+    #f0 = soln[0]
+    
 
     #rhofit = lamb_tanh_rho(z, *f0)
-    rhofit = double_tanh_rho(z, *f0) + rho0
+    rhofit = double_tanh_rho(z, *f0)# + rho0
     return rhofit, f0
 
 class FitDensity(object):
@@ -76,7 +87,8 @@ class FitDensity(object):
     def __call__(self, Z):
 
         f0 = self.f0
-        return double_tanh_rho(Z, *f0) + self.rho0
+        return double_tanh_rho(Z, *f0)# + self.rho0
+        #return lamb_tanh_rho(Z, *f0) 
 
 class InterpDensity(object):
     """

@@ -35,9 +35,9 @@ def solve_kdv(rho, z, runtime,\
     nn=0
     for ii in range(nsteps):
         # Log output
-        point = nsteps/100
-        if(ii % (5 * point) == 0):
-             if verbose:
+        point = nsteps/100.
+        if verbose:
+            if(ii % (5 * point) == 0):
                  print '%3.1f %% complete...'%(float(ii)/nsteps*100)
 
         if mykdv.solve_step() != 0:

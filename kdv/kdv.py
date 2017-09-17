@@ -412,8 +412,8 @@ class KdV(object):
         if self.nondim:
             N2 *=self.U**2/self.H**2.
         
-        A = B[:,np.newaxis] /self.c1
-        A_xx = B_xx / self.c1
+        A = B[:,np.newaxis] #/self.c1
+        A_xx = B_xx # / self.c1
         
         # Linear component
         b = A*self.phi_1*N2/self.c1

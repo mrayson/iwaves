@@ -30,6 +30,7 @@ class viewer(object):
     tstep = 0
     hscale = 0.5
     uscale = 2.
+    ulim = None
     xaxis = 'time'
     cmap = 'RdBu'
     rholevs = np.arange(20,30,0.25)
@@ -45,7 +46,10 @@ class viewer(object):
 
         # Compute some scales
         H = np.abs(self.mykdv.z).max()
-        umax = self.uscale*np.abs(u).max()
+        if self.ulim is None:
+            umax = self.uscale*np.abs(u).max()
+        else:
+            umax = self.ulim
         self.clim = [-umax, umax]
 
         if self.xaxis == 'time':
