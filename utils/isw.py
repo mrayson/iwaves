@@ -153,7 +153,7 @@ def calc_phi20_rhs(phi, c, N2, dz):
     r_20 = calc_r20(phi, c, N2, dz)
     S_20 = calc_S20(phi, c, N2, dz)
 
-    return -r_20*N2/c**3. + S_20
+    return -r_20*2*N2/c**3. * phi + S_20
 
 def calc_D01(phi, c, N2, dz):
     """

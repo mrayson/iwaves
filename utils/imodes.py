@@ -4,9 +4,11 @@ Internal dynamic modes class
 #import numpy as np
 #from scipy.interpolate import interp1d
 
+import matplotlib.pyplot as plt
+
 from .isw import *
 from .tools import grad_z
-from density import InterpDensity 
+from .density import InterpDensity 
 
 import gsw
 
@@ -16,7 +18,12 @@ class IWaveModes(object):
     """
     Wrapper class for calculation of modes
     """
-    def __init__(self, rho, z, salt=None, density_func=InterpDensity):
+    density_func = 'single_tanh'
+
+    def __init__(self, rho, z, salt=None, density_class=InterpDensity, **kwargs):
+
+        self.__dict__.update(**kwargs)
+
         if salt is None:
             self.rho = rho
         else:
@@ -29,7 +36,7 @@ class IWaveModes(object):
 
         self.z = z
 
-        self.Fi = density_func(self.rho, self.z)
+        self.Fi = density_class(self.rho, self.z, density_func=self.density_func)
  
     def __call__(self, zmax, dz, mode):
         """
@@ -87,7 +94,41 @@ class IWaveModes(object):
             epsilon - nonhydrostasy
             he - equivalent height
         """
-        raise Exception, NotImplementedError
+        # Compute the equivalent depth (see Vitousek and Fringer,2011)
+        r10 = calc_r10(self.phi, self.c1, self.N2, self.dz)
+        r01 = calc_r01(self.phi, self.c1, self.dz)
+        r20 = calc_r20(self.phi, self.c1, self.N2, self.dz)
+        h_e = wave_he(self.phi, self.dz)
+        
+        return r10, r01, r20, h_e
+
+    def plot_modes(self):
+
+        Z = self.Z
+
+        plt.subplot(131)
+        plt.plot(self.N2, Z)
+        plt.xlabel('$N^2$ [s$^{-2}$]')
+
+        ax = plt.subplot(132)
+        plt.plot(self.phi, Z)
+
+        #plt.text(0.1,0.1, \
+        #        'c1 = %3.2f [m/s]\nr10 = %1.2e [m$^{-1}$]'%(c1,mykdv0.r10),\
+        #        transform=ax.transAxes)
+        plt.xlabel('$\phi(z)$')
+        ax.set_yticklabels([])
+
+        ax = plt.subplot(133)
+        plt.plot(self.rhoZ, Z)
+        plt.plot(self.rho, self.z ,'kd')
+        plt.xlabel(r'$\rho(z)$ [kg m$^{-3}$]')
+        ax.set_yticklabels([])
+
+
+
+
+
 
 
 
