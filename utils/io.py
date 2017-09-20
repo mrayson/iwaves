@@ -13,7 +13,28 @@ def from_netcdf(kdvfile):
     kdvx = xray.open_dataset(kdvfile)
     
     # These are the attributes that KdV requires
-    attrs = ['L_d','Nx','Lw','a0','Cmax','nu_H','x0']
+    #attrs = ['L_d','Nx','Lw','a0','Cmax','nu_H','x0']
+    attrs = ['Nx',\
+                'L_d',\
+                'a0',\
+                'Lw',\
+                'x0',\
+                'mode',\
+                'Cmax',\
+                'nu_H',\
+                'dx_s',\
+                'dz_s',\
+                'dt_s',\
+                'c1',\
+                'mu',\
+                'epsilon',\
+                'r01',\
+                'r10',\
+                't',\
+                #'ekdv',
+        ]
+
+
 
     kwargs = {}
     for aa in attrs:

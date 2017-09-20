@@ -182,7 +182,7 @@ def calc_D10(phi, c, N2, dz):
     
     D10 = N2/c*phi10 + r_10*N2/c**2.*phi - 1/(2*c**2)*dN2_dz*phi**2.
 
-    return D10#/N2
+    return D10 #/N2
 
 def calc_D20(phi, c, N2, dz):
     """
