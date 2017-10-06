@@ -98,10 +98,29 @@ class IWaveModes(object):
         r10 = calc_r10(self.phi, self.c1, self.N2, self.dz)
         r01 = calc_r01(self.phi, self.c1, self.dz)
         r20 = calc_r20(self.phi, self.c1, self.N2, self.dz)
-        T10 = calc_T10(self.phi, self.c1, self.N2, self.dz)
         h_e = wave_he(self.phi, self.dz)
         
-        return r10, r01, r20, T10, h_e
+        return r10, r01, r20, h_e
+
+    def calc_nonlin_structure(self):
+        """
+        Calculate the nonlinear structure functions
+        """
+        # Structure function for higher powers of epsilon & mu
+        phi01 = calc_phi01(self.phi, self.c1, self.N2, self.dz)
+        phi10 = calc_phi10(self.phi, self.c1, self.N2, self.dz)
+        phi20 = calc_phi20(self.phi, self.c1, self.N2, self.dz)
+
+        # Holloway 99 nonlinear correction
+        T10 = calc_T10(self.phi, self.c1, self.N2, self.dz)
+
+        D01 = calc_D01(self.phi, self.c1, self.N2, self.dz)
+        D10 = calc_D10(self.phi, self.c1, self.N2, self.dz)
+        D20 = calc_D20(self.phi, self.c1, self.N2, self.dz)
+
+        return phi01, phi10, phi20, T10, D01, D10, D20
+
+
 
     def plot_modes(self):
 
