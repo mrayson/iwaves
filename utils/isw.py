@@ -6,6 +6,7 @@ import numpy as np
 from scipy import linalg
 from scipy.interpolate import interp1d
 from scipy.integrate import solve_bvp
+from scipy.optimize import least_squares, leastsq
 
 import pdb
 
@@ -92,7 +93,7 @@ def calc_alpha(phi, c, N2, dz):
     """
     Holloway et al 1999 nonlinearity parameter
     """
-    phi_z = np.gradient(phi,-dz)
+    phi_z = np.gradient(phi,-np.abs(dz))
     num = 3*c*np.trapz( phi_z**3., dx=dz)
     den = 2*np.trapz( phi_z**2., dx=dz)
 
@@ -131,6 +132,42 @@ def calc_r01(phi, c, dz):
 
     return num/den
 
+def calc_phi10(phi, c, N2, dz):
+
+    kmax = np.argwhere(phi==phi.max())[0][0]
+    phi10rhs = calc_phi10_rhs(phi, c, N2, dz)
+    phi10 = solve_phi_bvp(phi10rhs, N2, c, dz, kmax=kmax)
+
+    ## Normalize
+    #alpha = -phi10[kmax]
+    #phi10 += alpha*phi
+
+    return phi10
+
+def calc_phi01(phi, c, N2, dz):
+
+    kmax = np.argwhere(phi==phi.max())[0][0]
+    phi01rhs = calc_phi01_rhs(phi, c, N2, dz)
+    phi01 = solve_phi_bvp(phi01rhs, N2, c, dz, kmax=kmax)
+
+    # Normalize
+    #alpha = -phi01[kmax]
+    #phi01 += alpha*phi
+
+    return phi01
+
+def calc_phi20(phi, c, N2, dz):
+
+    kmax = np.argwhere(phi==phi.max())[0][0]
+    phi20rhs = calc_phi20_rhs(phi, c, N2, dz)
+    phi20 = solve_phi_bvp(phi20rhs, N2, c, dz, kmax=kmax)
+
+    ## Normalize
+    #alpha = -phi20[kmax]
+    #phi20 += alpha*phi
+
+    return phi20
+
 def calc_phi01_rhs(phi, c, N2, dz):
     r_01 = calc_r01(phi, c, dz)        
 
@@ -162,8 +199,7 @@ def calc_D01(phi, c, N2, dz):
     
     r_01 = calc_r01(phi, c, dz) 
     
-    phi01rhs = calc_phi01_rhs(phi, c, N2, dz)
-    phi01 = solve_phi_bvp(phi01rhs, N2, c, dz)
+    phi01 = calc_phi01(phi, c, N2, dz)
     
     D01 = N2/c*phi01 + r_01*N2/c**2.*phi 
 
@@ -177,8 +213,7 @@ def calc_D10(phi, c, N2, dz):
     dN2_dz = np.gradient(N2,-np.abs(dz))
     r_10 = calc_r10(phi, c, N2, dz) 
     
-    phi10rhs = calc_phi10_rhs(phi, c, N2, dz)
-    phi10 = solve_phi_bvp(phi10rhs, N2, c, dz)
+    phi10 = calc_phi10(phi, c, N2, dz)
     
     D10 = N2/c*phi10 + r_10*N2/c**2.*phi - 1/(2*c**2)*dN2_dz*phi**2.
 
@@ -190,8 +225,7 @@ def calc_D20(phi, c, N2, dz):
     """
     r_20 = calc_r20(phi, c, N2, dz) 
     
-    phi20rhs = calc_phi20_rhs(phi, c, N2, dz)
-    phi20 = solve_phi_bvp(phi20rhs, N2, c, dz)
+    phi20 = calc_phi20(phi, c, N2, dz)
 
     T_20 = calc_T20(phi, c, N2, dz)
     
@@ -212,8 +246,7 @@ def calc_S20(phi, c, N2, dz):
 
     r_10 = calc_r10(phi, c, N2, dz) 
     
-    phi10rhs = calc_phi10_rhs(phi, c, N2, dz)
-    phi10 = solve_phi_bvp(phi10rhs, N2, c, dz)
+    phi10 = calc_phi10(phi, c, N2, dz)
     
     S20 = 2/c**3.*dN2_dz * phi * phi10\
         - 1/(2*c**4) * d2N2_dz2 * phi**3 \
@@ -237,8 +270,7 @@ def calc_T20(phi, c, N2, dz):
 
     r10 = calc_r10(phi, c, N2, dz) 
     
-    phi10rhs = calc_phi10_rhs(phi, c, N2, dz)
-    phi10 = solve_phi_bvp(phi10rhs, N2, c, dz)
+    phi10 = calc_phi10(phi, c, N2, dz)
 
     return -dN2_dz/c**2.*phi*phi10\
         -r10*dN2_dz/c**3.*phi**2.\
@@ -253,13 +285,19 @@ def calc_T10(phi, c, N2, dz):
     Calculates the Grimshaw and co nonlinear correction term
     """
     
-    dN2_dz = np.gradient(N2,-dz)
+    dN2_dz = np.gradient(N2,-np.abs(dz))
     alpha = calc_alpha(phi, c, N2, dz) 
     
     RHS = alpha*N2/c**4. * phi
     RHS += dN2_dz/c**3. *phi**2.
 
-    T10 = solve_phi_bvp(RHS, N2, c, dz)
+
+    kmax = np.argwhere(phi==phi.max())[0][0]
+    T10 = solve_phi_bvp(RHS, N2, c, dz, kmax=kmax)
+
+    # Normalize
+    #alpha = -T10[kmax]
+    #T10 += alpha*phi
     
     # normalize ??
     #T10 = T10 * phi/np.mean(phi)
@@ -271,7 +309,7 @@ def calc_T10(phi, c, N2, dz):
     
     #T10 *= (1-phi)
     
-    return -T10
+    return T10
 
 
 #####
@@ -340,31 +378,77 @@ def wave_he(phi, dz):
 #####
 # Boundary value problem solvers
 #####
-def solve_phi_bvp(B, N2, c, dz):
+def solve_phi_bvp_newton(B, N2, c, dz):
     """
-    Use the scipy integration function
+    Use the scipy integration function (Uses Newton method)
     """
-
-
     nx = N2.shape[0]
     x = np.linspace(0, nx*dz, nx)
     k = -N2/c**2.
-    Fk = interp1d(x,k)
-    Fb = interp1d(x,B)
-    def fun(x, y):
+    Fk = interp1d(x, k, kind=2)
+    Fb = interp1d(x, B, kind=2)
+    def fun(x, y, p):
         return np.vstack([y[1], Fk(x) * y[0] + Fb(x)])
 
-    def bc(ya, yb):
-        return np.array([ ya[0], yb[0] ])
-
-    ya = np.zeros((2,x.size))
-
-    res_a = solve_bvp(fun, bc, x, ya)
-
-    return res_a['y'][0,:]
+    def bc(ya, yb, p):
+        # BC: y(0) = y(H) = 0 and y'(0) = 0 
+        #return np.array([ ya[0], yb[0], ya[1] ])
+        # BC: y(0) = y(H) = 0
+        return np.array([ ya[0], yb[0], yb[1] ])
 
 
-def solve_phi_bvp_fd(B, N2, c, dz):
+    y = np.zeros((2,x.size))
+
+    res_a = solve_bvp(fun, bc, x, y, p=[0], tol=1e-10)
+
+    return res_a.sol(x)[0,:]
+
+
+def solve_phi_bvp(B, N2, c, dz, kmax=None):
+    """
+    Finite-difference  solver for the higher-order vertical structure
+    functions
+
+    """
+    # Interpolate onto the mid-point
+    Bmid = 0.5*(B[1:] + B[:-1])
+    N2mid = 0.5*(N2[1:] + N2[:-1])
+    nz = Bmid.shape[0] 
+    dz2 = 1/dz**2
+    
+    ### Construct the LHS matrix, A 
+    # (use a dense matrix for now)
+    A = np.diag(dz2*np.ones((nz-1)),-1) +\
+        np.diag(-2*dz2*np.ones((nz,)) +\
+        N2mid/c**2*np.ones((nz,)) ,0) + \
+        np.diag(dz2*np.ones((nz-1)),1)
+
+    ## BC's
+    A[0,0] = -3*dz2 + N2mid[0]/c**2 # Dirichlet BC
+    A[-1,-1] = -3*dz2 + N2mid[-1]/c**2 # Dirichlet BC
+
+    # Apply normalization condition at kmax
+    if kmax is not None:
+        A[kmax, kmax] = 0.
+    
+    #soln = linalg.solve(A, Bmid)
+
+    # Solve with optimization routines
+    def minfun(x0):
+        return A.dot(x0) - Bmid
+
+    soln, status = leastsq(minfun, np.zeros_like(Bmid), xtol=1e-12)
+
+    # Interpolate back onto the grid points
+    phi = np.zeros((nz+1,))
+    soln_mid = 0.5*(soln[1:] + soln[:-1])
+    # Zeros are BCs
+    phi[1:-1] = soln_mid
+
+    return phi
+
+
+def _oldsolve_phi_bvp_fd(B, N2, c, dz):
     """
     Finite-difference  solver for the higher-order vertical structure
     functions

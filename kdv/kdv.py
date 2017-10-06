@@ -131,10 +131,8 @@ class KdV(object):
         # Find the location of max (phi) - used to normalize high order terms
         self.kmax = np.argwhere(np.abs(self.phi_1) == np.abs(self.phi_1).max())[0,0]
 
-        # Not used
-        #self.T10 = calc_T10(self.phi_1, self.c1, self.N2, self.dz_s)
         
-	self.r01, self.r10, self.r20 = self.calc_coeffs()
+	self.r01, self.r10, self.r20, self.T10 = self.calc_coeffs()
 
         ####
         # Nondimensional time step
@@ -235,26 +233,20 @@ class KdV(object):
         #r10 = alpha(self.phi_1, self.c1, self.N2, self.dz_s)
         r20 = calc_r20(self.phi_1, self.c1, self.N2, self.dz_s)
 
-	return r01, r10, r20
+        # Holloway 99 nonlinear correction
+        T10 = calc_T10(self.phi_1, self.c1, self.N2, self.dz_s)
+
+	return r01, r10, r20, T10
 
     def calc_nonlinstructure(self):
         # Structure function for higher powers of epsilon & mu
-        rhs01 = calc_phi01_rhs(self.phi_1, self.c1, self.N2, self.dz_s)
-        phi01 = solve_phi_bvp(rhs01, self.N2, self.c1, self.dz_s)
+        phi01 = calc_phi01(self.phi_1, self.c1, self.N2, self.dz_s)
 
-        rhs10 = calc_phi10_rhs(self.phi_1, self.c1, self.N2, self.dz_s)
-        phi10 = solve_phi_bvp(rhs10, self.N2, self.c1, self.dz_s)
+        phi10 = calc_phi10(self.phi_1, self.c1, self.N2, self.dz_s)
 
         #if self.ekdv:
-        rhs20 = calc_phi20_rhs(self.phi_1, self.c1, self.N2, self.dz_s)
-        phi20 = solve_phi_bvp(rhs20, self.N2, self.c1, self.dz_s)
+        phi20 = calc_phi20(self.phi_1, self.c1, self.N2, self.dz_s)
 
-        # See Eq 3.13 for definitions of this
-        self.alpha_10 = -phi10[self.kmax]
-        self.alpha_20 = -phi20[self.kmax]
-        phi10 += self.alpha_10*self.phi_1
-        phi20 += self.alpha_20*self.phi_1
-        
         return phi01, phi10, phi20
  
     def calc_buoyancy_coeffs(self):
@@ -263,14 +255,7 @@ class KdV(object):
         D10 = calc_D10(self.phi_1, self.c1, self.N2, self.dz_s)
         D20 = calc_D20(self.phi_1, self.c1, self.N2, self.dz_s)
 
-        # See Eq 3.13 for definitions of this
-        #alpha_10 = -D10[self.kmax]
-        #alpha_20 = -D20[self.kmax]
-
-        D10 += self.alpha_10*self.phi_1*self.N2
-        D20 += self.alpha_20*self.phi_1*self.N2
-
-        return D01,D10,D20
+        return D01, D10, D20
 
     def build_matrix_sparse(self, An):
         """
@@ -460,23 +445,24 @@ class KdV(object):
         """
         Use the Holloway et al 99 version of the eqn's
         """
-        dN2_dz = np.gradient(self.N2, -self.dz_s)
+        dN2_dz = np.gradient(self.N2, -np.abs(self.dz_s))
         
         # Linear term
         b = self.B[:,np.newaxis] * self.phi_1 * self.N2
         
-        alpha = self.r10/(2*self.c1)
+        #alpha = self.r10/(2*self.c1) ??
+        alpha = -2*self.c1*self.r10
         
         # nonlinear terms
         if nonlinear:
-            b -= self.r10*self.B[:,np.newaxis]*self.phi_1*self.N2
+            b -= alpha/(2*self.c1)*self.B[:,np.newaxis]*self.phi_1*self.N2
             b -= 0.5*dN2_dz*self.B[:,np.newaxis]**2. * self.phi_1**2.
-            b += self.c1*self.B[:,np.newaxis]**2. *self.N2 *self.T10
+            b += self.c1*self.B[:,np.newaxis]**2. *self.N2 * self.T10
             
         return b
             
         
-    def calc_density(self, nonlinear=True, method='exact'):
+    def calc_density(self, nonlinear=True, method='l96'):
         """
         Returns density
         
@@ -486,7 +472,7 @@ class KdV(object):
             'exact' interpolate density from the perturbation height
         """
         if method == 'exact':
-            eta_pr = self.B[:,np.newaxis]*self.phi_1
+            eta_pr = self.B[:,np.newaxis]*self.phi_1 # Need to add the nonlinear components
     
             # Interpolation function
             Frho = interp1d(self.z, self.rhoz, axis=0)
@@ -504,8 +490,11 @@ class KdV(object):
             b = self.calc_buoyancy_h99(nonlinear=nonlinear)
         elif method == 'l96':
             b = self.calc_buoyancy(nonlinear=nonlinear)
-        return RHO0*(( b/GRAV + self.rhoz[np.newaxis,:]/RHO0 - 1))
 
+
+        #rho1 =  RHO0*(( b/GRAV + self.rhoz[np.newaxis,:]/RHO0 - 1))
+        rho = b*RHO0/GRAV + self.rhoz[np.newaxis,:] - RHO0
+        return rho
         #return RHO0*(b/GRAV) + self.rhoz[np.newaxis,:] - RHO0
         #return (b/GRAV + self.rhoz[np.newaxis,:]) - RHO0
     

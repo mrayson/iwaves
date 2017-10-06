@@ -98,9 +98,10 @@ class IWaveModes(object):
         r10 = calc_r10(self.phi, self.c1, self.N2, self.dz)
         r01 = calc_r01(self.phi, self.c1, self.dz)
         r20 = calc_r20(self.phi, self.c1, self.N2, self.dz)
+        T10 = calc_T10(self.phi, self.c1, self.N2, self.dz)
         h_e = wave_he(self.phi, self.dz)
         
-        return r10, r01, r20, h_e
+        return r10, r01, r20, T10, h_e
 
     def plot_modes(self):
 
