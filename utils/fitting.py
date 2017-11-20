@@ -110,6 +110,94 @@ def fit_bmodes_linear(rho, rhoz, z,  zmin, modes,\
     else:
         return A_t, np.array(phi_n).T, rhofit
 
+def fit_bmodes_linear_w_iw(rho, z,  zmin, modes, iw, \
+        Nz=100, full_output=True):
+    """
+    Compute the linear modal amplitude to the mode numbers in the list
+
+    Inputs:
+    ---
+        rho - matrix[nz, nt], density data
+        z - vector[nz], depth from bottom to top, negative values (ascending)
+        modes - list[nmodes], mode numbers in python index i.e. 0=1
+
+    Returns
+    ---
+        A_t - matrix[nmodes, nt], modal amplitude
+        phi - matrix[nmodes, nz], modal structure functions
+        rhofit - matrix[nz, nt], best fit density profile
+
+    """
+
+    nz, nt = rho.shape
+    nmodes = len(modes)
+
+    # Calculate dz
+    Z = np.linspace(zmin, 0, Nz)
+    dz = np.mean(np.diff(Z))
+
+    # Interpolate the background density from the iwave class
+    phi, cn, he, znew = iw(zmin, dz, 0) # need to call the class once
+    F = PchipInterpolator(iw.Z[::-1], iw.rhoZ[::-1])
+    rhoz = F(z)
+
+    # Compute buoyancy from density and backgroud density
+    rhopr = rho.T - rhoz[np.newaxis,...]
+    b = GRAV*rhopr/RHO0
+
+    # Compute the modal structures
+    L = np.zeros((nz,nmodes))
+    phi_n = []
+
+    c1 = []
+    r10 = []
+
+    for ii, mode in enumerate(modes):
+        # Use the mode class to create the profile
+        phi, cn, he, znew = iw(zmin, dz, mode)
+        rn0, _, _, _ = iw.calc_nonlin_params()
+
+        c1.append(cn)
+        r10.append(rn0)
+
+        if full_output:
+            if ii==0:
+                Nz = iw.Z.size
+                Lout = np.zeros((Nz, nmodes))
+            Lout[:,ii] = phi * iw.N2
+            phi_n.append(phi)
+
+        ## Interpolate the modal shape and N2 onto the measured depth locations
+        F = PchipInterpolator(iw.Z[::-1], iw.phi[::-1])
+        my_phi = F(z)
+
+        F = PchipInterpolator(iw.Z[::-1], iw.N2[::-1])
+        my_N2 = F(z)
+
+        L[:,ii] = my_phi*my_N2
+        #phi_n.append(my_phi)
+
+
+    ## Fit Ax=b
+    A_t,_,_,_ = la.lstsq(L , b.T)
+
+    # Reconstruct the density field
+    bfit_n = L[:,np.newaxis,:]*A_t.T[np.newaxis,...]
+    bfit = bfit_n.sum(axis=-1) # sum the modes
+
+    rhoprfit = bfit.T*RHO0/GRAV
+    rhofit = rhoprfit + rhoz[np.newaxis,:]
+
+    if full_output:
+        bfit_n = Lout[:,np.newaxis,:]*A_t.T[np.newaxis,...]
+        bfit = bfit_n.sum(axis=-1) # sum the modes
+        rhoprfit = bfit.T*RHO0/GRAV
+        rhofit_full = rhoprfit + iw.rhoZ[np.newaxis,:]
+        return A_t, np.array(phi_n).T, rhofit, rhofit_full, iw, r10, c1
+    else:
+        return A_t, np.array(phi_n).T, rhofit, r10, c1
+
+
 
 def fit_bmodes_nonlinear(rho, rhoz, z, mode, dz=2.5, density_func='single_tanh'):
     """

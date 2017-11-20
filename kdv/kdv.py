@@ -73,6 +73,9 @@ class KdV(object):
     # Higher order correction factors
     alpha_10 = 0. # -0.008
     alpha_20 = 0. # 3e-5
+
+    # Nonlinear scaling factor for r10 (for testing)
+    nonlin_scale = 1.
     
     
     def __init__(self, rhoz, z, wavefunc=sine, **kwargs):
@@ -236,7 +239,7 @@ class KdV(object):
         # Holloway 99 nonlinear correction
         T10 = calc_T10(self.phi_1, self.c1, self.N2, self.dz_s)
 
-	return r01, r10, r20, T10
+	return r01, self.nonlin_scale*r10, r20, T10
 
     def calc_nonlinstructure(self):
         # Structure function for higher powers of epsilon & mu
