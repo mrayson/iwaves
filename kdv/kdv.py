@@ -478,7 +478,7 @@ class KdV(object):
             eta_pr = self.B[:,np.newaxis]*self.phi_1 # Need to add the nonlinear components
     
             # Interpolation function
-            Frho = interp1d(self.z, self.rhoz, axis=0)
+            Frho = interp1d(self.z, self.rhoz, axis=0, fill_value='extrapolate')
     
             eta = self.z[np.newaxis,:] - eta_pr
     

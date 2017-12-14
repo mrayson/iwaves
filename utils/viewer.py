@@ -35,6 +35,8 @@ class viewer(object):
     cmap = 'RdBu'
     rholevs = np.arange(20,30,0.25)
 
+    density_method='exact'
+
     def __init__(self, ncfile, **kwargs):
         self.__dict__.update(**kwargs)
 
@@ -107,7 +109,7 @@ class viewer(object):
         
         self.mykdv.B[:] = self.Bt.values[t,:]
         u,w = self.mykdv.calc_velocity()
-        rho = self.mykdv.calc_density()
+        rho = self.mykdv.calc_density(method=self.density_method)
 
         return u, w, rho
 

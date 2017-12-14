@@ -10,6 +10,7 @@ import xarray as xray
 
 def solve_kdv(rho, z, runtime,\
         solver='imex', ntout=None, outfile=None,\
+        myfunc=None,
         verbose=True, **kwargs):
     """
     function for generating different soliton scenarios
@@ -29,6 +30,7 @@ def solve_kdv(rho, z, runtime,\
     nout = int(runtime//ntout)
     B = np.zeros((nout, mykdv.Nx))
     tout = np.zeros((nout,))
+    output = []
 
     ## Run the model
     nsteps = int(runtime//mykdv.dt_s)
@@ -44,6 +46,10 @@ def solve_kdv(rho, z, runtime,\
             print 'Blowing up at step: %d'%ii
             break
         
+        # Evalute the function
+        if myfunc is not None:
+            output.append(myfunc(mykdv))
+
         # Output data
         if (mykdv.t%ntout) < mykdv.dt_s:
             #print ii,nn, mykdv.t
@@ -90,6 +96,9 @@ def solve_kdv(rho, z, runtime,\
     if outfile is not None:
         ds.to_netcdf(outfile)
 
-    return mykdv, Bda
+    if myfunc is None:
+        return mykdv, Bda
+    else:
+        return mykdv, Bda, output
 
 

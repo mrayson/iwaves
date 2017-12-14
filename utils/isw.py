@@ -108,6 +108,22 @@ def calc_r20(phi, c, N2, dz):
     den = 2*np.trapz( phi_z**2., dx=dz)
     return num/den
 
+def calc_alpha_wshear(phi, c, U, dz):
+    """
+    alpha with shear (see Grimshaw 2004)
+    """
+    phi_z = np.gradient(phi,-np.abs(dz))
+    num = 3*np.trapz((c-U)**2. * phi_z**3., dx=np.abs(dz))
+    den = 2*np.trapz( (c-U) * phi_z**2., dx=np.abs(dz))
+
+    return num/den
+
+def calc_beta_wshear(phi, c, U, dz):
+    phi_z = np.gradient(phi, -np.abs(dz))
+    num = np.trapz( (c-U)**2. * phi**2., dx=np.abs(dz))
+    den = 2*np.trapz( (c-U) * phi_z**2., dx=np.abs(dz))
+
+    return num/den
 
 def calc_r10(phi, c, N2, dz):
     """
