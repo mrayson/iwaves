@@ -82,7 +82,6 @@ def fit_rho(rho, z, density_func='single_tanh'):
     #soln =  leastsq(fdiff, initguess, args=(rhotry, z), \
     #    full_output=True)
     #f0 = soln[0]
-    
 
     if density_func=='double_tanh':
         rhofit = double_tanh_rho(z, *f0)# + rho0
