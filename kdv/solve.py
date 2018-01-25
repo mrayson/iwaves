@@ -4,16 +4,23 @@ Wrapper function to solve the KdV equations
 
 from kdvimex import KdVImEx
 from kdv import KdV
+from vkdv import vKdV
 
 import numpy as np
 import xarray as xray
 
 def solve_kdv(rho, z, runtime,\
-        solver='imex', ntout=None, outfile=None,\
+        solver='imex',
+        h=None,
+        x=None,
+        mode=0,
+        ntout=None, outfile=None,\
         myfunc=None,
         verbose=True, **kwargs):
     """
     function for generating different soliton scenarios
+
+    solver: explicit, imex or vkdv (uses imex)
     """
     if ntout is None:
         ntout = runtime
@@ -23,6 +30,8 @@ def solve_kdv(rho, z, runtime,\
         mykdv = KdVImEx(rho, z, **kwargs)
     elif solver=='explicit':
         mykdv = KdV(rho, z, **kwargs)
+    elif solver=='vkdv':
+        mykdv = vKdV(rho, z, h, x, mode, **kwargs)
     else:
         raise Exception, 'unknown solver %s'%solver
 

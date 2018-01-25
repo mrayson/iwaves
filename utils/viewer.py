@@ -4,6 +4,7 @@ KdV Solution viewer
 
 import sys
 from iwaves import from_netcdf
+from iwaves.utils.io import vkdv_from_netcdf
 
 from datetime import datetime
 import numpy as np
@@ -36,18 +37,27 @@ class viewer(object):
     rholevs = np.arange(20,30,0.25)
 
     density_method='exact'
+    isvkdv = False
+
+    ylim = None
+    xlim = None
 
     def __init__(self, ncfile, **kwargs):
         self.__dict__.update(**kwargs)
 
-        self.mykdv, self.Bt = from_netcdf(ncfile)
+        if self.isvkdv:
+            self.mykdv, self.Bt = vkdv_from_netcdf(ncfile)
+        else:
+            self.mykdv, self.Bt = from_netcdf(ncfile)
+            self.mykdv.X = self.mykdv.x
+            self.mykdv.Z = self.mykdv.z
 
         self.Nt = self.Bt.time.shape[0]
 
         u, w, rho = self.load_tstep(self.tstep)
 
         # Compute some scales
-        H = np.abs(self.mykdv.z).max()
+        self.H = np.abs(self.mykdv.z).max()
         if self.ulim is None:
             umax = self.uscale*np.abs(u).max()
         else:
@@ -57,10 +67,10 @@ class viewer(object):
         if self.xaxis == 'time':
             # Time should be backwards
             self.x = -self.mykdv.x/self.mykdv.c1/3600. # Time hours
-            xlabel = 'Time [h]'
+            self.xlabel = 'Time [h]'
         elif self.xaxis == 'distance':
             self.x = self.mykdv.x
-            xlabel = 'Distance [m]'
+            self.xlabel = 'Distance [m]'
 
         ### Build the figure
         self.fig = plt.figure(figsize = (12,8), num = 'KdV Viewer')
@@ -69,26 +79,9 @@ class viewer(object):
         self.axtime = plt.subplot2grid((9,3), (8,0), colspan=2, rowspan=1)
 
         self.ax1 = plt.subplot2grid((9,3), (0,0), colspan=3, rowspan=2)
-        self.ax1.set_ylim(-self.hscale*H, self.hscale*H)
-        self.ax1.set_ylabel('$\eta(x,t)$ [m]')
 
         self.ax2 = plt.subplot2grid((9,3), (2,0), colspan=3, rowspan=6, sharex=self.ax1)
-        self.ax2.set_ylabel('Depth [m]')
-        self.ax2.set_xlabel(xlabel)
-
-        # Plot the amplitude on ax1
-        self.p1, = self.ax1.plot(self.x, self.mykdv.B, 'b')
-
-        # Plot the velocity data
-        self.p2 = self.ax2.pcolormesh(self.x, self.mykdv.z, u.T,
-                vmin=self.clim[0], vmax=self.clim[1], cmap=self.cmap)
-
-        self.p3 = self.ax2.contour(self.x, self.mykdv.z, rho.T, self.rholevs,
-                colors='0.5', linewidths=0.5)
-
-        axcb = plt.subplot2grid((9,3), (8,2), colspan=1, rowspan=1,)
-        plt.colorbar(self.p2, cax=axcb, orientation='horizontal')
-
+        self.create_scene(self.ax1, self.ax2, u, rho)
 
         # Create the time slider
         valstr = ' of %d'%(self.Nt-1)
@@ -101,6 +94,37 @@ class viewer(object):
         plt.tight_layout()
 
         plt.show()
+
+    def create_scene(self, ax1, ax2, u, rho):
+        """
+        Create the current scene
+        """
+        if self.ylim is None:
+            ax1.set_ylim(-self.hscale*self.H, self.hscale*self.H)
+        else:
+            ax1.set_ylim(self.ylim)
+
+        if self.xlim is not None:
+            ax1.set_xlim(self.xlim)
+
+        ax1.set_ylabel('$\eta(x,t)$ [m]')
+
+        ax2.set_ylabel('Depth [m]')
+        ax2.set_xlabel(self.xlabel)
+
+        # Plot the amplitude on ax1
+        self.p1, = ax1.plot(self.x, self.mykdv.B, 'b')
+
+        # Plot the velocity data
+        self.p2 = ax2.pcolormesh(self.mykdv.X, self.mykdv.Z, u,
+                vmin=self.clim[0], vmax=self.clim[1], cmap=self.cmap)
+
+        self.p3 = ax2.contour(self.mykdv.X, self.mykdv.Z, rho, self.rholevs,
+                colors='0.5', linewidths=0.5)
+
+        axcb = plt.subplot2grid((9,3), (8,2), colspan=1, rowspan=1,)
+        plt.colorbar(self.p2, cax=axcb, orientation='horizontal')
+
 
     def load_tstep(self, t):
         """
@@ -127,12 +151,12 @@ class viewer(object):
 
             ## Update the contour plot
             self.ax2.collections=[]
-            self.ax2.contour(self.x, self.mykdv.z, rho.T, self.rholevs,
+            self.ax2.contour(self.mykdv.X, self.mykdv.Z, rho, self.rholevs,
                 colors='0.5', linewidths=0.5)
 
             # Update the pcolor plot
             #self.p2.set_array(u[:-1,:-1].T.ravel())
-            self.p2 = self.ax2.pcolormesh(self.x, self.mykdv.z, u.T,
+            self.p2 = self.ax2.pcolormesh(self.mykdv.X, self.mykdv.Z, u,
                 vmin=self.clim[0], vmax=self.clim[1], cmap=self.cmap)
 
 
