@@ -453,7 +453,13 @@ def solve_phi_bvp(B, N2, c, dz, kmax=None):
     def minfun(x0):
         return A.dot(x0) - Bmid
 
-    soln, status = leastsq(minfun, np.zeros_like(Bmid), xtol=1e-12)
+    soln, covc, info, mesg, status = leastsq(minfun, np.zeros_like(Bmid),\
+        xtol=1e-12, full_output=True)
+
+    #if status != 2:
+    #    print mesg
+    #    # These are bad eggs... zero them as its also a solution??
+    #    soln *= 0.
 
     # Interpolate back onto the grid points
     phi = np.zeros((nz+1,))

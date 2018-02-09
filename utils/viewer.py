@@ -9,20 +9,22 @@ from iwaves.utils.io import vkdv_from_netcdf
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from matplotlib.widgets import Slider
 import matplotlib
+
 # Set some default parameters
-matplotlib.rcParams['text.color']='white'
-matplotlib.rcParams['savefig.facecolor']='black'
-matplotlib.rcParams['savefig.edgecolor']='black'
-matplotlib.rcParams['figure.facecolor']='black'
-matplotlib.rcParams['figure.edgecolor']='black'
-matplotlib.rcParams['axes.facecolor']='black'
-matplotlib.rcParams['axes.edgecolor']='white'
-matplotlib.rcParams['axes.labelcolor']='white'
-matplotlib.rcParams['xtick.color']='white'
-matplotlib.rcParams['ytick.color']='white'
-matplotlib.rcParams['font.family']='serif'
+#matplotlib.rcParams['text.color']='white'
+#matplotlib.rcParams['savefig.facecolor']='black'
+#matplotlib.rcParams['savefig.edgecolor']='black'
+#matplotlib.rcParams['figure.facecolor']='black'
+#matplotlib.rcParams['figure.edgecolor']='black'
+#matplotlib.rcParams['axes.facecolor']='black'
+#matplotlib.rcParams['axes.edgecolor']='white'
+#matplotlib.rcParams['axes.labelcolor']='white'
+#matplotlib.rcParams['xtick.color']='white'
+#matplotlib.rcParams['ytick.color']='white'
+#matplotlib.rcParams['font.family']='serif'
 
 import pdb
 
@@ -39,11 +41,17 @@ class viewer(object):
     density_method='exact'
     isvkdv = False
 
+    use_slider = True
+    animate = False
+
     ylim = None
     xlim = None
 
     def __init__(self, ncfile, **kwargs):
         self.__dict__.update(**kwargs)
+
+        if self.animate:
+            self.use_slider=False 
 
         if self.isvkdv:
             self.mykdv, self.Bt = vkdv_from_netcdf(ncfile)
@@ -76,24 +84,35 @@ class viewer(object):
         self.fig = plt.figure(figsize = (12,8), num = 'KdV Viewer')
 
         # Time slider axes
-        self.axtime = plt.subplot2grid((9,3), (8,0), colspan=2, rowspan=1)
+        if self.use_slider:
+            self.axtime = plt.subplot2grid((9,3), (8,0), colspan=2, rowspan=1)
 
         self.ax1 = plt.subplot2grid((9,3), (0,0), colspan=3, rowspan=2)
+        plt.grid(b=True)
 
-        self.ax2 = plt.subplot2grid((9,3), (2,0), colspan=3, rowspan=6, sharex=self.ax1)
+        self.ax2 = plt.subplot2grid((9,3), (2,0), colspan=3, rowspan=6,\
+                sharex=self.ax1, axisbg='0.5')
         self.create_scene(self.ax1, self.ax2, u, rho)
 
-        # Create the time slider
-        valstr = ' of %d'%(self.Nt-1)
-        self.ts = Slider(self.axtime,\
-                'Time', 0, self.Nt-1, valinit=self.tstep,\
-                valfmt='%d'+valstr,facecolor='g',)
+        if self.use_slider:
+            # Create the time slider
+            valstr = ' of %d'%(self.Nt-1)
+            self.ts = Slider(self.axtime,\
+                    'Time', 0, self.Nt-1, valinit=self.tstep,\
+                    valfmt='%d'+valstr,facecolor='g',)
 
-        self.ts.on_changed(self.update_slider)
+            self.ts.on_changed(self.update_slider)
+
+            self.txtstr = None
+        
+        else:
+            self.txtstr = self.ax2.text(0.8,0.1, '',\
+                transform=self.ax2.transAxes)
 
         plt.tight_layout()
 
-        plt.show()
+        if self.animate is False:
+            plt.show()
 
     def create_scene(self, ax1, ax2, u, rho):
         """
@@ -122,8 +141,12 @@ class viewer(object):
         self.p3 = ax2.contour(self.mykdv.X, self.mykdv.Z, rho, self.rholevs,
                 colors='0.5', linewidths=0.5)
 
-        axcb = plt.subplot2grid((9,3), (8,2), colspan=1, rowspan=1,)
+        if self.use_slider:
+            axcb = plt.subplot2grid((9,3), (8,2), colspan=1, rowspan=1,)
+        else:
+            axcb = plt.subplot2grid((9,3), (8,1), colspan=2, rowspan=1,)
         plt.colorbar(self.p2, cax=axcb, orientation='horizontal')
+        axcb.set_title('u velocity [m s$^{-1}$]', fontsize=12)
 
 
     def load_tstep(self, t):
@@ -132,8 +155,8 @@ class viewer(object):
         """
         
         self.mykdv.B[:] = self.Bt.values[t,:]
-        u,w = self.mykdv.calc_velocity()
-        rho = self.mykdv.calc_density(method=self.density_method)
+        u,w = self.mykdv.calc_velocity(nonlinear=True)
+        rho = self.mykdv.calc_density(method=self.density_method, nonlinear=True)
 
         return u, w, rho
 
@@ -160,9 +183,36 @@ class viewer(object):
                 vmin=self.clim[0], vmax=self.clim[1], cmap=self.cmap)
 
 
+            if not self.use_slider:
+                self.txtstr.set_text('Time: %3.3f [days]'%(self.Bt.time.values[t]/86400.),)
+
             #title.set_text('%s [%s]\n%s'%(sun.long_name, sun.units,\
             #    datetime.strftime(sun.time[t], '%Y-%m-%d %H:%M:%S')))
             self.fig.canvas.draw_idle()
+
+
+        return self.p1, self.p2, self.txtstr
+
+def animate_kdv(kdvfile, outfile, **kwargs):
+    """
+    Animation wrapper
+    """
+    print 'Creating KdV animation...'
+    V = viewer(kdvfile, animate=True, **kwargs)
+    def init():
+        return V.p1, V.p2, V.txtstr
+
+    anim = animation.FuncAnimation(V.fig, V.update_slider,\
+        init_func=init, frames=range(0, V.Nt), interval=10, blit=True)
+
+    ##anim.save("%s.mp4"%outfile, writer='mencoder', fps=6, bitrate=3600)
+    anim.save("%s.mp4"%outfile, writer='ffmpeg', fps=6, bitrate=3600)
+    #anim.save("%s.gif"%outfile,writer='imagemagick',dpi=90)
+
+    print 'Saved to %s.gif'%outfile
+
+
+  
 
 
 if __name__=='__main__':

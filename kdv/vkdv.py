@@ -94,20 +94,20 @@ class vKdV(KdV):
 	## Create a 2D array of vertical coordinates
 	self.Z = -np.linspace(0,1,Nz)[:, np.newaxis] * h[np.newaxis,:]
 
-	self.dZ = h/Nz
+	#self.dZ = h/(Nz-1)
+        self.dZ = np.abs(self.Z[1,:]-self.Z[0,:])
 
 	self.dx = np.diff(x).mean()
 	self.X = x[np.newaxis,...] * np.ones((Nz,1))
 
 	# Interpolate the density profile onto all points
         if self.rhoZ is None:
-            Fi = interp1d(z, rhoz, axis=0)
+            Fi = interp1d(z, rhoz, axis=0, fill_value='extrapolate')
             self.rhoZ = Fi(self.Z)
 
-	drho_dz = grad_z(self.rhoZ, self.Z,  axis=0)
-	self.N2 = -GRAV*drho_dz/RHO0
 
         # Only calculate the parameters if they aren't specified
+        self.N2 = self.calc_N2()
         if self.Phi is None:
             self.Phi, self.Cn, self.Alpha, self.Beta, self.Qterm =\
                 self.calc_vkdv_params(Nz, Nx)
@@ -117,11 +117,19 @@ class vKdV(KdV):
 
         self.c1 = self.Cn
 
+        # Change these to be consistent with the Lamb discretization
+        #self.r10 = self.Alpha/(-2*self.c1)
+        #self.r01 = -self.Beta
+
 	# 
 	self.dt_s = np.min(self.dt_s)
 
         if self.ekdv:
             raise Exception, 'Extended-KdV not currently supported for spatially-varying model.'
+
+    def calc_N2(self):
+        drho_dz = grad_z(self.rhoZ, self.Z,  axis=0)
+        return -GRAV*drho_dz/RHO0
 
     def calc_vkdv_params(self, Nz, Nx):
         # Initialise arrays
@@ -133,6 +141,11 @@ class vKdV(KdV):
 
         # Loop through and compute the eigenfunctions etc at each point
         print 'Calculating eigenfunctions...'
+        phi0, cn0 = isw.iwave_modes(self.N2[:,0], self.dZ[0])
+        phi0 = phi0[:,self.mode]
+        phi0 = phi0 / np.abs(phi0).max()
+        phi0 *= np.sign(phi0.sum())
+ 
         for ii in range(0, Nx, self.Nsubset):
             point = Nx/100
             if(ii % (5 * point) == 0):
@@ -149,6 +162,12 @@ class vKdV(KdV):
             # Normalize so the max(phi)=1
             phi_1 = phi_1 / np.abs(phi_1).max()
             phi_1 *= np.sign(phi_1.sum())
+
+            # Work out if we need to flip the sign (only really matters for higher modes)
+            dphi0 = phi0[1]-phi0[0]
+            dphi1 = phi_1[1]-phi_1[0]
+            if np.sign(dphi1) != np.sign(dphi0):
+                phi_1 *= -1
 
             Cn[ii] = c1
             Phi[:,ii] = phi_1
@@ -244,7 +263,7 @@ class vKdV(KdV):
         return phi01, phi10, None
 
     def calc_coeffs(self):
-    	return -self.Beta, -self.Alpha, None, None
+    	return -self.Beta, self.Alpha/(-2*self.Cn), None, None
 
     def calc_buoyancy_coeffs(self):
 
@@ -287,12 +306,12 @@ class vKdV(KdV):
         B_xx = self.calc_Bxx()
 
         # Linear streamfunction
-        psi = B[np.newaxis, :]*self.phi_1 #*self.c1
+        psi = B[np.newaxis, :]*self.phi_1 * self.c1
 
-        # First-order nonlinear terms
+        ## First-order nonlinear terms
         if nonlinear:
-            psi += B[np.newaxis,:]**2. * self.phi10 #* self.c1**2.
-            psi += B_xx[np.newaxis,:] * self.phi01 #* self.c1
+            psi += B[np.newaxis,:]**2. * self.phi10 * self.c1**2.
+            psi += B_xx[np.newaxis,:] * self.phi01 * self.c1
         
             
         return psi
@@ -342,9 +361,11 @@ class vKdV(KdV):
         w = -d \psi /dx
         """
         psi = self.calc_streamfunction(nonlinear=nonlinear)
-        us, ws = np.gradient(psi)
-        
-        return -us/self.dZ[np.newaxis,...], -ws/self.dx_s
+        #us, ws = np.gradient(psi)
+        #return -us/self.dZ[np.newaxis,...], -ws/self.dx_s
+        u = grad_z(psi, self.Z, axis=0)
+        w = -1* grad_z(psi, self.X, axis=1)
+        return u, w
  
     def to_Dataset(self):
         """

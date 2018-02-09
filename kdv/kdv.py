@@ -11,6 +11,7 @@ import xarray as xray
 import matplotlib.pyplot as plt
 
 from iwaves.utils.isw import *
+from iwaves.utils.tools import grad_z
 
 import pdb 
 
@@ -18,7 +19,7 @@ import pdb
 ###################
 # Constants
 RHO0=1000
-GRAV=9.8
+GRAV=9.81
 
 class KdV(object):
    
@@ -128,12 +129,16 @@ class KdV(object):
         
         # Time is later...
 
+        # Buoyancy Frequency
+        self.N2 = self.calc_N2()
+        if self.nondim:
+            self.N2 = self.N2*self.H**2/self.U**2
+
 	# Calculate the eigenfunctions/values
 	self.phi_1, self.c1 = self.calc_linearstructure()
         
         # Find the location of max (phi) - used to normalize high order terms
         self.kmax = np.argwhere(np.abs(self.phi_1) == np.abs(self.phi_1).max())[0,0]
-
         
 	self.r01, self.r10, self.r20, self.T10 = self.calc_coeffs()
 
@@ -165,10 +170,7 @@ class KdV(object):
     def calc_linearstructure(self):
         ####
         # Calculate the linear vertical structure functions
-        self.N2 = self.calc_N2()
-        if self.nondim:
-            self.N2 = self.N2*self.H**2/self.U**2
-            
+           
         phi, cn = iwave_modes(self.N2, self.dz_s)
 
         # Extract the mode of interest
@@ -505,7 +507,8 @@ class KdV(object):
         """
         Calculate the buoyancy frequency
         """
-        drho_dz = np.gradient(self.rhoz, -np.abs(self.dz))
+        #drho_dz = np.gradient(self.rhoz, -np.abs(self.dz))
+	drho_dz = grad_z(self.rhoz, self.z,  axis=0)
         N2 = -GRAV*drho_dz
         if not self.nondim:
             N2/=RHO0
