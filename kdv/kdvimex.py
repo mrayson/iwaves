@@ -164,6 +164,11 @@ class KdVImEx(kdv.KdV):
             An2 = 0.25*np.power(An, 2.)
             diags[1,:] = diags[1,:] - cff5*An2
             diags[3,:] = diags[3,:] + cff5*An2
+            
+        # Bottom friction parameterization (Holloway et al, 1997)
+        if self.k_chezy > 0:
+            cff = -self.k_chezy*self.c1 / self.H**2.
+            diags[2,:] += cff * np.abs(An)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)

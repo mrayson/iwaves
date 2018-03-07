@@ -67,6 +67,9 @@ class KdV(object):
 
     # Horizontal eddy viscosity
     nu_H = 0.0
+    
+    # Bottom friction coefficient
+    k_chezy = 0.0
 
     # time counter
     t = 0.

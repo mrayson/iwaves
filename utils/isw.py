@@ -99,7 +99,6 @@ def calc_alpha(phi, c, N2, dz):
 
     return num/den
 
-
 def calc_r20(phi, c, N2, dz):
     phi_z = np.gradient(phi,-np.abs(dz))
     S_20 = calc_S20(phi, c, N2, dz)
@@ -109,6 +108,20 @@ def calc_r20(phi, c, N2, dz):
     return num/den
 
 def calc_alpha_wshear(phi, c, U, dz):
+    """
+    alpha with shear (see Liu et al 1988)
+    """
+    phi_z = np.gradient(phi, -np.abs(dz))
+    
+    # Liu et al definition
+    Uz = np.gradient(U, -np.abs(dz))
+
+    num = 3*c*np.trapz( 1/(c-U) * (phi_z - Uz/(U-c)*phi)**3., dx = np.abs(dz))
+    den = 2*np.trapz( 1/(c-U) * (phi_z - Uz/(U-c)*phi)**2., dx = np.abs(dz))
+
+    return num/den
+
+def calc_alpha_wshear_old(phi, c, U, dz):
     """
     alpha with shear (see Grimshaw 2004)
     """
