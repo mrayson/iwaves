@@ -23,7 +23,7 @@
 
 # Documentation
 
- - An example ipython notebook is in `tests` and viewed [here](https://nbviewer.jupyter.org/urls/bitbucket.org/mrayson/iwaves/raw/fa19c7fdff8650dcad4a56c1977ab6dae914c1b2/tests/test_kdvlamb.ipynb)
+ - An example ipython notebook is in `tests` and viewed [here](https://nbviewer.jupyter.org/urls/bitbucket.org/mrayson/iwaves/raw/c42dd64008eb014049b80031c07eb832d372f57f/tests/test_kdvlamb.ipynb)
  - A draft paper describing the numerical scheme is [here](https://www.overleaf.com/read/wvvthjwgtxft)
 ---
 
