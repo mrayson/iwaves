@@ -2,10 +2,15 @@
 
  - Solve 1D KdV equation
  - Calculate linear dynamic modes
+ - Fit dynamic modes to mooring data
 
 ---
 
 # Installation
+
+ - Step 1) Clone this repository
+ - Step 2) Set PYTHONPATH environment variable to point to the path where the repo sits
+ - Step 3) Install the dependencies below i.e. conda install ..., yum install ...
 
 ## Dependencies
  - numpy
@@ -16,33 +21,10 @@
 
 ---
 
-# TODO
+# Documentation
 
-## Pre-processing
- 
- - ~~Nonlinear EOS into IWaveModes class~~
- - ~~Density profile fitting option (in addition pchipinterpolator)~~
- - Wrapper function for running a kdv model
-     - ~~Different initial condition, and solver options~~
-     - ~~NetCDF output options~~
-     - Run as script or via command line (read yaml input file)
-
-## KdV Solver
-
- - ~~Move all kdvlamb functions into isw.py~~
-
-## Tests
- 
- - ~~Lamb and Yan, 1996 comparison notebook~~
-        - Still needs to be validated
- - Browse Basin (Prelude, April 2017) comparison
- - North Rankin (use CARS temp)
- 
-## Post-processing
-
- - Animated notebook
- - ~~GUI~~
-
+ - An example ipython notebook is in `tests` and viewed [here](https://nbviewer.jupyter.org/urls/bitbucket.org/mrayson/iwaves/raw/fa19c7fdff8650dcad4a56c1977ab6dae914c1b2/tests/test_kdvlamb.ipynb)
+ - A draft paper describing the numerical scheme is [here](https://www.overleaf.com/read/wvvthjwgtxft)
 ---
 
 Matt Rayson
