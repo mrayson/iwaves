@@ -46,6 +46,8 @@ def fit_rho(rho, z, density_func='single_tanh'):
     """
     Fits an analytical density profile to data
 
+    Uses a robust linear regression
+
     Inputs:
     ---
         rho: vector of density [Nz]
@@ -76,6 +78,10 @@ def fit_rho(rho, z, density_func='single_tanh'):
     soln =\
         least_squares(fdiff, initguess, args=(rhotry, z, density_func), \
         bounds=bounds,\
+        xtol=1e-10,
+        ftol=1e-10,
+        loss='cauchy', f_scale=0.1, # Robust
+        verbose=0,
         )
     f0 = soln['x']
 
@@ -121,8 +127,8 @@ class InterpDensity(object):
         
         self.__dict__.update(**kwargs)
 
-        #self.Fi = PchipInterpolator(z, rho, axis=0, extrapolate=True)
-        self.Fi = CubicSpline(z, rho, axis=0, bc_type='natural')
+        self.Fi = PchipInterpolator(z, rho, axis=0, extrapolate=True)
+        #self.Fi = CubicSpline(z, rho, axis=0, bc_type='natural')
 
     def __call__(self, Z):
         
