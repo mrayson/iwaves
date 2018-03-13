@@ -1,9 +1,16 @@
 # TODO
 
+## Physics
+
+ - Closure model for viscosity
+ - ~~Bottom friction term~~ 
+ - Vertical shear with analytical comparison
+
 ## Pre-processing
  
  - ~~Nonlinear EOS into IWaveModes class~~
  - ~~Density profile fitting option (in addition pchipinterpolator)~~
+ - ~~Variable-spaced mesh eigenvalue solver~~
  - Wrapper function for running a kdv model
      - ~~Different initial condition, and solver options~~
      - ~~NetCDF output options~~
@@ -13,13 +20,14 @@
 
  - ~~Move all kdvlamb functions into isw.py~~
 
-## Tests
+## Tests / Tutorials
  
  - ~~Lamb and Yan, 1996 comparison notebook~~
         - Still needs to be validated
- - Browse Basin (Prelude, April 2017) comparison
- - North Rankin (use CARS temp)
- 
+ - Example notebook using a measured temperature profile
+ - Batch run
+ - Parallel batch run
+
 ## Post-processing
 
  - Animated notebook
