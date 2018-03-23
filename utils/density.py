@@ -3,7 +3,7 @@ Density fitting and interpolation classes
 """
 
 import numpy as np
-from scipy.optimize import leastsq, least_squares
+from scipy.optimize import leastsq, least_squares, curve_fit
 from scipy.interpolate import PchipInterpolator, CubicSpline
 
 import pdb
@@ -26,12 +26,17 @@ def lamb_tanh_rho(z, rho0, dp, z1, h1, H=None):
 
 def single_tanh_rho(z, rho0, rho1, z1, h1,):
 
-    return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1))
+    #return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1))
+    return rho0 - rho1*np.tanh((z+z1)/h1)
 
 def double_tanh_rho(z, rho0, rho1, rho2, z1, z2, h1, h2):
 
-    return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1)) +\
-        rho2/2*(1-np.tanh( (z+z2)/h2))
+    #return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1)) +\
+    #    rho2/2*(1-np.tanh( (z+z2)/h2))
+
+    return rho0 - rho1*np.tanh((z+z1)/h1) -\
+        rho2*np.tanh((z+z2)/h2)
+
 
 def fdiff(coeffs, rho, z,density_func):
 
@@ -40,6 +45,7 @@ def fdiff(coeffs, rho, z,density_func):
     elif density_func=='single_tanh':
         soln = single_tanh_rho(z, *coeffs)
 
+    #print coeffs[-4], coeffs[-3], coeffs[-2], coeffs[-1]
     return rho - soln
 
 def fit_rho(rho, z, density_func='single_tanh'):
@@ -70,10 +76,10 @@ def fit_rho(rho, z, density_func='single_tanh'):
     if density_func=='double_tanh':
         initguess = [rho0, 0.01, 0.01, 1., 2., H/10., H/10.] # double tanh guess
         #bounds = [(0,10.),(0,10.),(0,H),(0,H),(0,H/2),(0,H/2)]
-        bounds = [(rho0-1,0.,0.,0.,0.,H/20.,H/20.),(rho0+1,10.,10.,H,H,H/2,H/2)]
+        bounds = [(rho0-5,0.,0.,0.,0.,H/20.,H/20.),(rho0+5,10.,10.,H,H,H/2,H/2)]
     elif density_func=='single_tanh':
         initguess = [rho0, 1e-3, 40., 100.] # single stratification function
-        bounds = [(rho0-1,0.,0.,0.),(rho0+1,10.,2*H,2*H)]
+        bounds = [(rho0-5,0.,0.,0.),(rho0+5,10.,2*H,2*H)]
 
     soln =\
         least_squares(fdiff, initguess, args=(rhotry, z, density_func), \
@@ -133,3 +139,20 @@ class InterpDensity(object):
     def __call__(self, Z):
         
         return self.Fi(Z)
+
+class ChebyFitDensity(object):
+    """
+    Wrapper class for Chebyshev Polynomial fit
+    """
+    order=None
+    def __init__(self, rho ,z, **kwargs):
+        
+        self.__dict__.update(**kwargs)
+        nz = z.size
+        if self.order is None:
+            self.order = int(max(3,nz -2))
+        self.f0 = coefs = np.polynomial.chebyshev.chebfit(z, rho, self.order)
+
+    def __call__(self, Z):
+        
+        return np.polynomial.chebyshev.chebval(Z, self.f0)

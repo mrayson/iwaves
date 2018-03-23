@@ -33,6 +33,7 @@ def iwave_modes_uneven(N2, z):
     dzm[0] = dzm[1]
     dzm[-1] = dzm[-2]
 
+    # Solve as a matrix
     A = np.zeros((nz,nz))
     for i in range(1,nz-1):
         A[i,i] = 1/ (dz[i-1]*dzm[i]) + 1/(dz[i]*dzm[i])
@@ -51,6 +52,24 @@ def iwave_modes_uneven(N2, z):
 
     # Solve... (use scipy not numpy)
     w, phi = linalg.eig(A, b=B)
+
+    ## Solve as a banded matrix
+    #A = np.zeros((3,nz))
+    #for i in range(1,nz-1):
+    #    A[1,i] = 1/ (dz[i-1]*dzm[i]) + 1/(dz[i]*dzm[i])
+    #    A[0,i-1] = -1/(dz[i-1]*dzm[i])
+    #    A[2,i+1] = -1/(dz[i]*dzm[i])
+
+    ### BC's
+    ##eps = 1e-10
+    ##A[0,0] = -1.
+    ##A[0,1] = 0.
+    ##A[-1,-1] = -1.
+    ##A[-1,-2] = 0.
+    #A[1,0] = -1
+    #A[1,-1] = -1
+
+
 
     c = 1. / np.power(w, 0.5) # since term is ... + N^2/c^2 \phi
 

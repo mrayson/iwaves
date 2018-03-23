@@ -19,6 +19,7 @@ class IWaveModes(object):
     Wrapper class for calculation of modes
     """
     density_func = 'single_tanh'
+    order = None
 
     def __init__(self, rho, z, salt=None, density_class=InterpDensity, **kwargs):
 
@@ -36,7 +37,8 @@ class IWaveModes(object):
 
         self.z = z
 
-        self.Fi = density_class(self.rho, self.z, density_func=self.density_func)
+        self.Fi = density_class(self.rho, self.z,\
+                density_func=self.density_func, order=self.order)
  
     def __call__(self, zmax, dz, mode):
         """
