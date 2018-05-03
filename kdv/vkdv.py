@@ -340,7 +340,7 @@ class vKdV(KdV):
             #D01 = calc_D01(self.phi_1, self.c1, self.N2, self.dz_s)
             b += self.mu*A_xx[np.newaxis,:]*self.D01
         
-        return b
+        return b.T # Need to return the dimensions
 
     def calc_density(self, nonlinear=True, method='l96'):
         """
@@ -365,7 +365,7 @@ class vKdV(KdV):
         #return -us/self.dZ[np.newaxis,...], -ws/self.dx_s
         u = grad_z(psi, self.Z, axis=0)
         w = -1* grad_z(psi, self.X, axis=1)
-        return u, w
+        return u.T, w.T
  
     def to_Dataset(self):
         """

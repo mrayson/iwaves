@@ -143,7 +143,7 @@ class KdVImEx(kdv.KdV):
 
         return M, diags
 
-    def build_nonlinear_matrix(self, An):
+    def build_nonlinear_diags(self, An):
         """
         Build the nonlinear steepening term
         """
@@ -170,6 +170,13 @@ class KdVImEx(kdv.KdV):
             cff = -self.k_chezy*self.c1 / self.H**2.
             diags[2,:] += cff * np.abs(An)
 
+        return diags
+
+    def build_nonlinear_matrix(self, An):
+        """
+        Build the nonlinear steepening term
+        """
+        diags = self.build_nonlinear_diags(An)
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 

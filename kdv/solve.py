@@ -2,6 +2,7 @@
 Wrapper function to solve the KdV equations
 """
 
+from kdvdamped import KdVDamp
 from kdvimex import KdVImEx
 from kdv import KdV
 from vkdv import vKdV
@@ -32,6 +33,8 @@ def solve_kdv(rho, z, runtime,\
         mykdv = KdV(rho, z, **kwargs)
     elif solver=='vkdv':
         mykdv = vKdV(rho, z, h, x, mode, **kwargs)
+    elif solver=='damped':
+        mykdv = KdVDamp(rho, z, **kwargs)
     else:
         raise Exception, 'unknown solver %s'%solver
 

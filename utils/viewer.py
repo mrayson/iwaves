@@ -135,10 +135,10 @@ class viewer(object):
         self.p1, = ax1.plot(self.x, self.mykdv.B, 'b')
 
         # Plot the velocity data
-        self.p2 = ax2.pcolormesh(self.mykdv.X, self.mykdv.Z, u,
+        self.p2 = ax2.pcolormesh(self.mykdv.X, self.mykdv.Z, u.T,
                 vmin=self.clim[0], vmax=self.clim[1], cmap=self.cmap)
 
-        self.p3 = ax2.contour(self.mykdv.X, self.mykdv.Z, rho, self.rholevs,
+        self.p3 = ax2.contour(self.mykdv.X, self.mykdv.Z, rho.T, self.rholevs,
                 colors='0.5', linewidths=0.5)
 
         if self.use_slider:
@@ -174,12 +174,12 @@ class viewer(object):
 
             ## Update the contour plot
             self.ax2.collections=[]
-            self.ax2.contour(self.mykdv.X, self.mykdv.Z, rho, self.rholevs,
+            self.ax2.contour(self.mykdv.X, self.mykdv.Z, rho.T, self.rholevs,
                 colors='0.5', linewidths=0.5)
 
             # Update the pcolor plot
             #self.p2.set_array(u[:-1,:-1].T.ravel())
-            self.p2 = self.ax2.pcolormesh(self.mykdv.X, self.mykdv.Z, u,
+            self.p2 = self.ax2.pcolormesh(self.mykdv.X, self.mykdv.Z, u.T,
                 vmin=self.clim[0], vmax=self.clim[1], cmap=self.cmap)
 
 
