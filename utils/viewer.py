@@ -48,6 +48,36 @@ class viewer(object):
     xlim = None
 
     def __init__(self, ncfile, **kwargs):
+        """
+        KdV NetCDF Viewer
+
+        Views scenes created by "solve_kdv"
+
+        ## Inputs:
+             ncfile
+
+        ## Properties:
+             fig, ax1, ax2: plot properties
+
+        ## Defaults:
+            tstep = 0
+            hscale = 0.5
+            uscale = 2.
+            ulim = None
+            xaxis = 'time'
+            cmap = 'RdBu'
+            rholevs = np.arange(20,30,0.25)
+
+            density_method='exact'
+            isvkdv = False
+
+            use_slider = True
+            animate = False
+
+            ylim = None
+            xlim = None
+        """
+
         self.__dict__.update(**kwargs)
 
         if self.animate:
