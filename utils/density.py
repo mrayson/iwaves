@@ -30,6 +30,9 @@ def single_tanh_rho(z, rho0, rho1, z1, h1,):
     return rho0 - rho1*np.tanh((z+z1)/h1)
 
 def double_tanh_rho(z, rho0, rho1, rho2, z1, z2, h1, h2):
+    """
+    Seven parameter model
+    """
 
     #return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1)) +\
     #    rho2/2*(1-np.tanh( (z+z2)/h2))
@@ -37,11 +40,23 @@ def double_tanh_rho(z, rho0, rho1, rho2, z1, z2, h1, h2):
     return rho0 - rho1*np.tanh((z+z1)/h1) -\
         rho2*np.tanh((z+z2)/h2)
 
+def double_tanh_rho_new(z, rho0, rho1, z1, z2, h1, h2):
+    """
+    Six parameter model proposed by Andrew Manderson and Ed Cripps, UWA Stats
+    """
+
+    return rho0 - rho1* (np.tanh((z+z1)/h1) +\
+        np.tanh((z+z2)/h2))
+
+
+
 
 def fdiff(coeffs, rho, z,density_func):
 
     if density_func=='double_tanh':
         soln = double_tanh_rho(z, *coeffs)
+    elif density_func=='double_tanh_new':
+        soln = double_tanh_rho_new(z, *coeffs)
     elif density_func=='single_tanh':
         soln = single_tanh_rho(z, *coeffs)
 
@@ -77,6 +92,12 @@ def fit_rho(rho, z, density_func='single_tanh'):
         initguess = [rho0, 0.01, 0.01, 1., 2., H/10., H/10.] # double tanh guess
         #bounds = [(0,10.),(0,10.),(0,H),(0,H),(0,H/2),(0,H/2)]
         bounds = [(rho0-5,0.,0.,0.,0.,H/20.,H/20.),(rho0+5,10.,10.,H,H,H/2,H/2)]
+
+    if density_func=='double_tanh_new':
+        initguess = [rho0, 0.01, 1., 2., H/10., H/10.] # double tanh guess
+        #bounds = [(0,10.),(0,10.),(0,H),(0,H),(0,H/2),(0,H/2)]
+        bounds = [(rho0-5,0.,0.,0.,H/20.,H/20.),(rho0+5,10.,H,H,H/2,H/2)]
+
     elif density_func=='single_tanh':
         initguess = [rho0, 1e-3, 40., 100.] # single stratification function
         bounds = [(rho0-5,0.,0.,0.),(rho0+5,10.,2*H,2*H)]
@@ -95,8 +116,11 @@ def fit_rho(rho, z, density_func='single_tanh'):
     #    full_output=True)
     #f0 = soln[0]
 
+    # This could be changed to pass a function directly...
     if density_func=='double_tanh':
         rhofit = double_tanh_rho(z, *f0)# + rho0
+    elif density_func=='double_tanh_new':
+        rhofit = double_tanh_rho_new(z, *f0)# + rho0
     elif density_func=='single_tanh':
         rhofit = single_tanh_rho(z, *f0)
     return rhofit, f0
@@ -120,6 +144,10 @@ class FitDensity(object):
         f0 = self.f0
         if self.density_func=='double_tanh':
             return double_tanh_rho(Z, *f0)# + self.rho0
+
+        if self.density_func=='double_tanh_new':
+            return double_tanh_rho_new(Z, *f0)# + self.rho0
+
         elif self.density_func=='single_tanh':
             return single_tanh_rho(Z, *f0) 
 

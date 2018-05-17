@@ -129,22 +129,22 @@ class IWaveModes(object):
         Z = self.Z
 
         plt.subplot(131)
-        plt.plot(self.N2, Z)
-        plt.xlabel('$N^2$ [s$^{-2}$]')
+        plt.plot(self.rhoZ, Z)
+        plt.plot(self.rho, self.z ,'kd')
+        plt.xlabel(r'$\rho(z)$ [kg m$^{-3}$]')
 
         ax = plt.subplot(132)
+        plt.plot(self.N2, Z)
+        plt.xlabel('$N^2$ [s$^{-2}$]')
+        ax.set_yticklabels([])
+
+        ax = plt.subplot(133)
         plt.plot(self.phi, Z)
 
         #plt.text(0.1,0.1, \
         #        'c1 = %3.2f [m/s]\nr10 = %1.2e [m$^{-1}$]'%(c1,mykdv0.r10),\
         #        transform=ax.transAxes)
         plt.xlabel('$\phi(z)$')
-        ax.set_yticklabels([])
-
-        ax = plt.subplot(133)
-        plt.plot(self.rhoZ, Z)
-        plt.plot(self.rho, self.z ,'kd')
-        plt.xlabel(r'$\rho(z)$ [kg m$^{-3}$]')
         ax.set_yticklabels([])
 
 
