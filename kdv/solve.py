@@ -2,10 +2,10 @@
 Wrapper function to solve the KdV equations
 """
 
-from kdvdamped import KdVDamp
-from kdvimex import KdVImEx
-from kdv import KdV
-from vkdv import vKdV
+from .kdvdamped import KdVDamp
+from .kdvimex import KdVImEx
+from .kdv import KdV
+from .vkdv import vKdV
 
 import numpy as np
 import xarray as xray
@@ -36,7 +36,7 @@ def solve_kdv(rho, z, runtime,\
     elif solver=='damped':
         mykdv = KdVDamp(rho, z, **kwargs)
     else:
-        raise Exception, 'unknown solver %s'%solver
+        raise Exception('unknown solver %s'%solver)
 
     # Initialise an output array
     nout = int(runtime//ntout)
@@ -52,10 +52,10 @@ def solve_kdv(rho, z, runtime,\
         point = nsteps/100.
         if verbose:
             if(ii % (5 * point) == 0):
-                 print '%3.1f %% complete...'%(float(ii)/nsteps*100)
+                 print('%3.1f %% complete...'%(float(ii)/nsteps*100))
 
         if mykdv.solve_step() != 0:
-            print 'Blowing up at step: %d'%ii
+            print('Blowing up at step: %d'%ii)
             break
         
         # Evalute the function

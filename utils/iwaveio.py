@@ -51,7 +51,7 @@ def from_netcdf(kdvfile):
     kdv.B[:] = kdvx.B.values
     
     # Return the time-variable amplitude array as well
-    if 'B_t' in kdvx.variables.keys():
+    if 'B_t' in list(kdvx.variables.keys()):
         B_t  = kdvx['B_t']
     else:
         B_t = None
@@ -100,7 +100,7 @@ def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None):
     )
 
     # Return the time-variable amplitude array as well
-    if 'B_t' in ds.variables.keys():
+    if 'B_t' in list(ds.variables.keys()):
         B_t  = ds['B_t']
     else:
         B_t = None

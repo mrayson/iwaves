@@ -2,7 +2,7 @@
 Damped KdV equation
 """
 import iwaves.utils.isw as iwaves
-import kdvimex as kdv
+from . import kdvimex as kdv
 import numpy as np
 from scipy import sparse 
 from scipy.sparse import linalg

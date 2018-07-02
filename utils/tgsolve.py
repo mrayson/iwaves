@@ -149,7 +149,7 @@ def tgsolve(z, U, N2, mode):
        
     #print phi[0], phi[-1]
     if np.abs(phi[-1]) > 1e-6:
-        print 'Warning: Convergence Issue with TG-solver'
+        print('Warning: Convergence Issue with TG-solver')
     
     return phi, cn
 

@@ -125,7 +125,7 @@ class vKdV(KdV):
 	self.dt_s = np.min(self.dt_s)
 
         if self.ekdv:
-            raise Exception, 'Extended-KdV not currently supported for spatially-varying model.'
+            raise Exception('Extended-KdV not currently supported for spatially-varying model.')
 
     def calc_N2(self):
         drho_dz = grad_z(self.rhoZ, self.Z,  axis=0)
@@ -140,7 +140,7 @@ class vKdV(KdV):
         Q = np.zeros((Nx,))
 
         # Loop through and compute the eigenfunctions etc at each point
-        print 'Calculating eigenfunctions...'
+        print('Calculating eigenfunctions...')
         phi0, cn0 = isw.iwave_modes(self.N2[:,0], self.dZ[0])
         phi0 = phi0[:,self.mode]
         phi0 = phi0 / np.abs(phi0).max()
@@ -149,7 +149,7 @@ class vKdV(KdV):
         for ii in range(0, Nx, self.Nsubset):
             point = Nx/100
             if(ii % (5 * point) == 0):
-                print '%3.1f %% complete...'%(float(ii)/Nx*100)
+                print('%3.1f %% complete...'%(float(ii)/Nx*100))
 
             #phi, cn = iwave_modes_sparse(N2[:,ii], dZ[ii], h[ii])
             #phi, cn = isw.iwave_modes(self.N2[:,ii], self.dZ[ii], h[ii])
@@ -175,7 +175,7 @@ class vKdV(KdV):
 
         # Interpolate all of the variables back onto the regular grid
         x = self.x
-        idx = range(0,Nx,self.Nsubset)
+        idx = list(range(0,Nx,self.Nsubset))
         interpm = 'cubic'
         F = interp1d(x[idx],Cn[idx], kind=interpm, fill_value='extrapolate')
         Cn = F(x)
@@ -232,11 +232,11 @@ class vKdV(KdV):
 	phi01 = np.zeros((self.Nz, self.Nx))
 	phi10 = np.zeros((self.Nz, self.Nx))
 
-        print 'Calculating nonlinear structure functions...'
+        print('Calculating nonlinear structure functions...')
 	for ii in range(0, self.Nx, self.Nsubset):
 	    point = self.Nx/100
 	    if(ii % (5 * point) == 0):
-		print '%3.1f %% complete...'%(float(ii)/self.Nx*100)
+		print('%3.1f %% complete...'%(float(ii)/self.Nx*100))
 
 	    rhs01 = isw.calc_phi01_rhs(self.Phi[:,ii], \
 	    	self.c1[ii], self.N2[:,ii], self.dZ[ii])
@@ -248,7 +248,7 @@ class vKdV(KdV):
 	    	self.N2[:,ii], self.c1[ii], self.dZ[ii])
 
         # Interpolate all of the variables back onto the regular grid
-        idx = range(0,self.Nx,self.Nsubset)
+        idx = list(range(0,self.Nx,self.Nsubset))
         interpm = 'cubic'
 
         F = interp1d(self.X[0,idx], phi01[:,idx], kind=interpm,\
@@ -273,7 +273,7 @@ class vKdV(KdV):
 	D01 = np.zeros((self.Nz, self.Nx))
 	D10 = np.zeros((self.Nz, self.Nx))
 
-        print 'Calculating buoyancy coefficients...'
+        print('Calculating buoyancy coefficients...')
         for ii in range(0,self.Nx, self.Nsubset):
             D01[:,ii] = isw.calc_D01(self.Phi[:,ii], self.c1[ii],\
                 self.N2[:,ii], self.dZ[ii])
@@ -281,7 +281,7 @@ class vKdV(KdV):
                 self.N2[:,ii], self.dZ[ii])
 
         # Interpolate all of the variables back onto the regular grid
-        idx = range(0,self.Nx,self.Nsubset)
+        idx = list(range(0,self.Nx,self.Nsubset))
         interpm = 'cubic'
 
         F = interp1d(self.X[0,idx], D01[:,idx], kind=interpm,\

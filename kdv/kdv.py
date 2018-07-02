@@ -529,7 +529,7 @@ class KdV(object):
 
         printstr += ' r20 = %3.7f\n'%(self.r20)
 
-        print printstr
+        print(printstr)
 
     ######
     # IO methods

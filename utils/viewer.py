@@ -227,19 +227,19 @@ def animate_kdv(kdvfile, outfile, **kwargs):
     """
     Animation wrapper
     """
-    print 'Creating KdV animation...'
+    print('Creating KdV animation...')
     V = viewer(kdvfile, animate=True, **kwargs)
     def init():
         return V.p1, V.p2, V.txtstr
 
     anim = animation.FuncAnimation(V.fig, V.update_slider,\
-        init_func=init, frames=range(0, V.Nt), interval=10, blit=True)
+        init_func=init, frames=list(range(0, V.Nt)), interval=10, blit=True)
 
     ##anim.save("%s.mp4"%outfile, writer='mencoder', fps=6, bitrate=3600)
     anim.save("%s.mp4"%outfile, writer='ffmpeg', fps=6, bitrate=3600)
     #anim.save("%s.gif"%outfile,writer='imagemagick',dpi=90)
 
-    print 'Saved to %s.gif'%outfile
+    print('Saved to %s.gif'%outfile)
 
 
   
@@ -249,7 +249,7 @@ if __name__=='__main__':
     
 
     ncfile = sys.argv[1]
-    print ncfile
+    print(ncfile)
     viewer(ncfile)
         
 

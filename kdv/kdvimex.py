@@ -9,7 +9,7 @@ Classes:
 """
 
 import iwaves.utils.isw as iwaves
-import kdv
+from . import kdv
 import numpy as np
 from scipy import sparse 
 from scipy.sparse import linalg

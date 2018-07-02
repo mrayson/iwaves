@@ -27,7 +27,7 @@ def get_peak_window(y, t, windowsize, nmax, fun='max', vals=[], idxs=[], ctr=0):
     elif fun == 'min':
         idx = np.argsort(y)[0] # ascending order
     else:
-        raise Exception, 'unknown function', fun
+        raise Exception('unknown function').with_traceback(fun)
     
     # Find the start and end indices to extract from the initial time series
     i1 = max(0, idx-windowsize//2)
