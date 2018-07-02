@@ -653,8 +653,8 @@ def iwave_modes_uneven(N2, z):
     # Normalize so the max(phi)=1
     for ii in range(nz):
         phi_1 = phiall[:,ii]
-	phi_1 = phi_1 / np.abs(phi_1).max()
-	phi_1 *= np.sign(phi_1.sum())
+        phi_1 = phi_1 / np.abs(phi_1).max()
+        phi_1 *= np.sign(phi_1.sum())
         phiall[:,ii] = phi_1
 
     return phiall, cn

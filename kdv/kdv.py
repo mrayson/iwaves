@@ -100,10 +100,10 @@ class KdV(object):
         self.Nz = rhoz.shape[0]
         self.dz = np.abs(self.z[1]-self.z[0])
 
-	if self.x is None:
-	    self.x = np.linspace(-self.L_d, self.L_d, self.Nx)
-	else:
-	    self.Nx = self.x.shape[0]
+        if self.x is None:
+            self.x = np.linspace(-self.L_d, self.L_d, self.Nx)
+        else:
+            self.Nx = self.x.shape[0]
 
         #self.x = np.linspace(0, self.L_d, self.Nx)
         self.dx = np.abs(self.x[1]-self.x[0])
@@ -137,13 +137,13 @@ class KdV(object):
         if self.nondim:
             self.N2 = self.N2*self.H**2/self.U**2
 
-	# Calculate the eigenfunctions/values
-	self.phi_1, self.c1 = self.calc_linearstructure()
+        # Calculate the eigenfunctions/values
+        self.phi_1, self.c1 = self.calc_linearstructure()
         
         # Find the location of max (phi) - used to normalize high order terms
         self.kmax = np.argwhere(np.abs(self.phi_1) == np.abs(self.phi_1).max())[0,0]
         
-	self.r01, self.r10, self.r20, self.T10 = self.calc_coeffs()
+        self.r01, self.r10, self.r20, self.T10 = self.calc_coeffs()
 
         ####
         # Nondimensional time step
@@ -156,9 +156,9 @@ class KdV(object):
 
         #print self.dx/self.c1, 
 
-	####
-	# Calculate the nonlinear correction terms
-	self.phi01, self.phi10, self.phi20 = self.calc_nonlinstructure()
+        ####
+        # Calculate the nonlinear correction terms
+        self.phi01, self.phi10, self.phi20 = self.calc_nonlinstructure()
 
         self.D01, self.D10, self.D20 = self.calc_buoyancy_coeffs()
 
@@ -184,7 +184,7 @@ class KdV(object):
         phi_1 = phi_1 / np.abs(phi_1).max()
         phi_1 *= np.sign(phi_1.sum())
 
-	return phi_1, c1
+        return phi_1, c1
 
 
     def init_wave(self, wavefunc):
@@ -235,7 +235,7 @@ class KdV(object):
         return status
 
     def calc_coeffs(self):
-	# Compute nonlinear and dispersion constants
+        # Compute nonlinear and dispersion constants
         r01 = calc_r01(self.phi_1, self.c1, self.dz_s)
         r10 = calc_r10(self.phi_1, self.c1, self.N2, self.dz_s)
         #r10 = alpha(self.phi_1, self.c1, self.N2, self.dz_s)
@@ -244,7 +244,7 @@ class KdV(object):
         # Holloway 99 nonlinear correction
         T10 = calc_T10(self.phi_1, self.c1, self.N2, self.dz_s)
 
-	return r01, self.nonlin_scale*r10, r20, T10
+        return r01, self.nonlin_scale*r10, r20, T10
 
     def calc_nonlinstructure(self):
         # Structure function for higher powers of epsilon & mu
@@ -511,7 +511,7 @@ class KdV(object):
         Calculate the buoyancy frequency
         """
         #drho_dz = np.gradient(self.rhoz, -np.abs(self.dz))
-	drho_dz = grad_z(self.rhoz, self.z,  axis=0)
+        drho_dz = grad_z(self.rhoz, self.z,  axis=0)
         N2 = -GRAV*drho_dz
         if not self.nondim:
             N2/=RHO0

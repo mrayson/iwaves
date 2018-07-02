@@ -59,18 +59,18 @@ class IWaveModes(object):
         rhoZ = self.Fi(Z)
 
         # Z needs to be negative so N^2 is positive
-	drho_dz = grad_z(rhoZ, Z,  axis=0)
-	N2 = -GRAV*drho_dz/RHO0
+        drho_dz = grad_z(rhoZ, Z,  axis=0)
+        N2 = -GRAV*drho_dz/RHO0
 
         phi, cn = iwave_modes(N2, dz)
 
-	# Extract the mode of interest
-	phi_1 = phi[:,mode]
-	c1 = cn[mode]
-	
-	# Normalize so the max(phi)=1
-	phi_1 = phi_1 / np.abs(phi_1).max()
-	phi_1 *= np.sign(phi_1.sum())
+        # Extract the mode of interest
+        phi_1 = phi[:,mode]
+        c1 = cn[mode]
+        
+        # Normalize so the max(phi)=1
+        phi_1 = phi_1 / np.abs(phi_1).max()
+        phi_1 *= np.sign(phi_1.sum())
 
         # Compute the equivalent depth (see Vitousek and Fringer,2011)
         h_e = wave_he(phi_1, dz)

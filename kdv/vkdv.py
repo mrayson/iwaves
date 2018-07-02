@@ -85,22 +85,22 @@ class vKdV(KdV):
         self.D01 = D01
         self.D10 = D10
 
-	Nz = z.shape[0]
-	Nx = x.shape[0]
+        Nz = z.shape[0]
+        Nx = x.shape[0]
 
         self.Nz = Nz
         self.Nx = Nx
 
-	## Create a 2D array of vertical coordinates
-	self.Z = -np.linspace(0,1,Nz)[:, np.newaxis] * h[np.newaxis,:]
+        ## Create a 2D array of vertical coordinates
+        self.Z = -np.linspace(0,1,Nz)[:, np.newaxis] * h[np.newaxis,:]
 
-	#self.dZ = h/(Nz-1)
+        #self.dZ = h/(Nz-1)
         self.dZ = np.abs(self.Z[1,:]-self.Z[0,:])
 
-	self.dx = np.diff(x).mean()
-	self.X = x[np.newaxis,...] * np.ones((Nz,1))
+        self.dx = np.diff(x).mean()
+        self.X = x[np.newaxis,...] * np.ones((Nz,1))
 
-	# Interpolate the density profile onto all points
+        # Interpolate the density profile onto all points
         if self.rhoZ is None:
             Fi = interp1d(z, rhoz, axis=0, fill_value='extrapolate')
             self.rhoZ = Fi(self.Z)
@@ -112,8 +112,8 @@ class vKdV(KdV):
             self.Phi, self.Cn, self.Alpha, self.Beta, self.Qterm =\
                 self.calc_vkdv_params(Nz, Nx)
 
-	# Now initialise the class
-	KdV.__init__(self, rhoz, z, wavefunc=wavefunc, x=x, mode=mode, ekdv=ekdv, **kwargs)
+        # Now initialise the class
+        KdV.__init__(self, rhoz, z, wavefunc=wavefunc, x=x, mode=mode, ekdv=ekdv, **kwargs)
 
         self.c1 = self.Cn
 
@@ -121,8 +121,8 @@ class vKdV(KdV):
         #self.r10 = self.Alpha/(-2*self.c1)
         #self.r01 = -self.Beta
 
-	# 
-	self.dt_s = np.min(self.dt_s)
+        # 
+        self.dt_s = np.min(self.dt_s)
 
         if self.ekdv:
             raise Exception('Extended-KdV not currently supported for spatially-varying model.')
@@ -208,12 +208,12 @@ class vKdV(KdV):
 	    - spatially variable coefficients
 	    - topographic amplification term
         """
-	#self.r10 = -self.Alpha
-	#self.r01 = -self.Beta
+        #self.r10 = -self.Alpha
+        #self.r01 = -self.Beta
         M,diags = KdV.build_linear_matrix(self)
 
-	# Add on the Q-term
-	diags[2,:] += self.Qterm
+        # Add on the Q-term
+        diags[2,:] += self.Qterm
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -229,35 +229,35 @@ class vKdV(KdV):
         if self.phi01 is not None and self.phi10 is not None:
              return self.phi01, self.phi10, None
 
-	phi01 = np.zeros((self.Nz, self.Nx))
-	phi10 = np.zeros((self.Nz, self.Nx))
+        phi01 = np.zeros((self.Nz, self.Nx))
+        phi10 = np.zeros((self.Nz, self.Nx))
 
         print('Calculating nonlinear structure functions...')
-	for ii in range(0, self.Nx, self.Nsubset):
-	    point = self.Nx/100
-	    if(ii % (5 * point) == 0):
-		print('%3.1f %% complete...'%(float(ii)/self.Nx*100))
+        for ii in range(0, self.Nx, self.Nsubset):
+            point = self.Nx/100
+            if(ii % (5 * point) == 0):
+                print('%3.1f %% complete...'%(float(ii)/self.Nx*100))
 
-	    rhs01 = isw.calc_phi01_rhs(self.Phi[:,ii], \
-	    	self.c1[ii], self.N2[:,ii], self.dZ[ii])
-	    phi01[:,ii] = isw.solve_phi_bvp(rhs01,\
-	    	self.N2[:,ii], self.c1[ii], self.dZ[ii])
-	    rhs10 = isw.calc_phi10_rhs(self.Phi[:,ii],\
-	    	self.c1[ii], self.N2[:,ii], self.dZ[ii])
-	    phi10[:,ii] = isw.solve_phi_bvp(rhs10, \
-	    	self.N2[:,ii], self.c1[ii], self.dZ[ii])
+            rhs01 = isw.calc_phi01_rhs(self.Phi[:,ii], \
+                self.c1[ii], self.N2[:,ii], self.dZ[ii])
+            phi01[:,ii] = isw.solve_phi_bvp(rhs01,\
+                self.N2[:,ii], self.c1[ii], self.dZ[ii])
+            rhs10 = isw.calc_phi10_rhs(self.Phi[:,ii],\
+                self.c1[ii], self.N2[:,ii], self.dZ[ii])
+            phi10[:,ii] = isw.solve_phi_bvp(rhs10, \
+                self.N2[:,ii], self.c1[ii], self.dZ[ii])
 
-        # Interpolate all of the variables back onto the regular grid
-        idx = list(range(0,self.Nx,self.Nsubset))
-        interpm = 'cubic'
+            # Interpolate all of the variables back onto the regular grid
+            idx = list(range(0,self.Nx,self.Nsubset))
+            interpm = 'cubic'
 
-        F = interp1d(self.X[0,idx], phi01[:,idx], kind=interpm,\
-                axis=1, fill_value='extrapolate')
-        phi01 = F(self.X[0,:])
+            F = interp1d(self.X[0,idx], phi01[:,idx], kind=interpm,\
+                    axis=1, fill_value='extrapolate')
+            phi01 = F(self.X[0,:])
 
-        F = interp1d(self.X[0,idx], phi10[:,idx], kind=interpm,\
-                axis=1, fill_value='extrapolate')
-        phi10 = F(self.X[0,:])
+            F = interp1d(self.X[0,idx], phi10[:,idx], kind=interpm,\
+                    axis=1, fill_value='extrapolate')
+            phi10 = F(self.X[0,:])
 
 
         return phi01, phi10, None
@@ -270,8 +270,8 @@ class vKdV(KdV):
         if self.D01 is not None and self.D10 is not None:
             return self.D01, self.D10, None
 
-	D01 = np.zeros((self.Nz, self.Nx))
-	D10 = np.zeros((self.Nz, self.Nx))
+        D01 = np.zeros((self.Nz, self.Nx))
+        D10 = np.zeros((self.Nz, self.Nx))
 
         print('Calculating buoyancy coefficients...')
         for ii in range(0,self.Nx, self.Nsubset):
