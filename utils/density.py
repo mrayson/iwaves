@@ -63,7 +63,7 @@ def fdiff(coeffs, rho, z,density_func):
     #print coeffs[-4], coeffs[-3], coeffs[-2], coeffs[-1]
     return rho - soln
 
-def fit_rho(rho, z, density_func='single_tanh'):
+def fit_rho(rho, z, density_func='single_tanh', errmax=1.0):
     """
     Fits an analytical density profile to data
 
@@ -79,6 +79,8 @@ def fit_rho(rho, z, density_func='single_tanh'):
         rhofit: best fit function at z locations
         f0: tuple with analytical parameters
     """
+
+    status = 0
 
     rho0 = rho.min()
 
@@ -123,7 +125,14 @@ def fit_rho(rho, z, density_func='single_tanh'):
         rhofit = double_tanh_rho_new(z, *f0)# + rho0
     elif density_func=='single_tanh':
         rhofit = single_tanh_rho(z, *f0)
-    return rhofit, f0
+    
+    err = np.linalg.norm(rhofit - rhotry)
+    if err > errmax:
+        print('Warning in density fit -- large error: %f'%err)
+        status = -1
+        #raise Exception('maximum fitting error exceeded')
+
+    return rhofit, f0, status
 
 class FitDensity(object):
     """
@@ -137,7 +146,7 @@ class FitDensity(object):
         self.__dict__.update(**kwargs)
 
         self.rho0 = rho.min()
-        rhofit, self.f0 = fit_rho(rho, z, density_func=self.density_func)
+        rhofit, self.f0, self.status = fit_rho(rho, z, density_func=self.density_func)
 
     def __call__(self, Z):
 

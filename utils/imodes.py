@@ -29,7 +29,7 @@ class IWaveModes(object):
             self.rho = rho
         else:
             # Compute potential density from the nonlinear EOS
-            self.rho = gsw.pot_rho_t_exact(salt, rho, z, 0.)
+            self.rho = gsw.pot_rho_t_exact(salt, rho, -z, 0.)
 
         # Check monotonicity of z
         assert np.all(np.diff(z)>0),\
