@@ -4,7 +4,7 @@ KdV Solution viewer
 
 import sys
 from iwaves import from_netcdf
-from iwaves.utils.io import vkdv_from_netcdf
+from iwaves.utils.iwaveio import vkdv_from_netcdf
 
 from datetime import datetime
 import numpy as np

@@ -29,6 +29,14 @@ def single_tanh_rho(z, rho0, rho1, z1, h1,):
     #return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1))
     return rho0 - rho1*np.tanh((z+z1)/h1)
 
+def double_tanh_rho_orig(z, rho0, rho1, rho2, z1, z2, h1, h2):
+    """
+    Seven parameter model
+    """
+
+    return rho0 + rho1/2*(1-np.tanh( (z+z1)/h1)) +\
+        rho2/2*(1-np.tanh( (z+z2)/h2))
+
 def double_tanh_rho(z, rho0, rho1, rho2, z1, z2, h1, h2):
     """
     Seven parameter model
@@ -47,8 +55,6 @@ def double_tanh_rho_new(z, rho0, rho1, z1, z2, h1, h2):
 
     return rho0 - rho1* (np.tanh((z+z1)/h1) +\
         np.tanh((z+z2)/h2))
-
-
 
 
 def fdiff(coeffs, rho, z,density_func):
