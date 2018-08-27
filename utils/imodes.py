@@ -124,6 +124,18 @@ class IWaveModes(object):
 
 
 
+    def calc_steep_scales(self, omega, a0):
+        """
+        Calculate the nonlinear steepening time and length scales
+        """
+        c = self.c1
+        r10 = calc_r10(self.phi, self.c1, self.N2, self.dz)
+        alpha = -2*c*r10
+
+        k = omega/c
+        tau_s = 1/(alpha*k*a0)
+        return tau_s, c*tau_s
+
     def plot_modes(self):
 
         Z = self.Z

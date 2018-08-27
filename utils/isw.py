@@ -109,11 +109,23 @@ def calc_r20(phi, c, N2, dz):
 
 def calc_alpha_wshear(phi, c, U, dz):
     """
+    alpha with shear (see Stastna and Lamb 2002)
+    """
+    # Stastna and Lamb defn
+    E = c/(c-U) * phi
+    E_z = np.gradient(E, -np.abs(dz))
+    
+    num = 3*np.trapz((c-U)**2. * E_z**3., dx = np.abs(dz))
+    den = 2*np.trapz((c-U) * E_z**2., dx = np.abs(dz)) 
+
+    return num/den
+
+def calc_alpha_wshear_liu(phi, c, U, dz):
+    """
     alpha with shear (see Liu et al 1988)
     """
-    phi_z = np.gradient(phi, -np.abs(dz))
-    
     # Liu et al definition
+    phi_z = np.gradient(phi, -np.abs(dz))
     Uz = np.gradient(U, -np.abs(dz))
 
     num = 3*c*np.trapz( 1/(c-U) * (phi_z - Uz/(U-c)*phi)**3., dx = np.abs(dz))

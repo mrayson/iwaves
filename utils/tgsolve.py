@@ -108,6 +108,7 @@ def tgsolve(z, U, N2, mode):
     """
     Taylor-Goldstein equation solver
     """
+    status = 0
 
     dz = np.abs(z[1]-z[0]) # Assume constant spacing
 
@@ -129,14 +130,15 @@ def tgsolve(z, U, N2, mode):
 
     ## Optimization step
     phi_2_guess = -0.15
-    soln = least_squares(objective2, [phi_2_guess, cguess], xtol=1e-12,gtol=1e-9,\
-        #bounds=((-2.2,cguess-cguess*0.25), (2.2, cguess+cguess*0.25)),\
-        args=(Fn,Fu,Fuzz,z), verbose=0,
-        diff_step=1e-4,\
-        method='dogbox')
+    #soln = least_squares(objective2, [phi_2_guess, cguess], xtol=1e-12,gtol=1e-9,\
+    #    #bounds=((-2.2,cguess-cguess*0.25), (2.2, cguess+cguess*0.25)),\
+    #    args=(Fn,Fu,Fuzz,z), verbose=0,
+    #    diff_step=1e-4,\
+    #    method='dogbox')
 
-    #soln = root(objective2, [phi_2_guess, cguess], args=(Fn,Fu,Fuzz, z),\
-    #    method='krylov', tol=1e-8)
+    soln = root(objective2, [phi_2_guess, cguess], args=(Fn,Fu,Fuzz, z),\
+       method='krylov', tol=1e-8)
+       #method='hybr', tol=1e-8)
 
     # Go back and get the optimal profile using the solution
     phi_2, cn = soln['x']
@@ -150,8 +152,9 @@ def tgsolve(z, U, N2, mode):
     #print phi[0], phi[-1]
     if np.abs(phi[-1]) > 1e-6:
         print('Warning: Convergence Issue with TG-solver')
+        status = -1
     
-    return phi, cn
+    return phi, cn, status
 
 #"""
 #Grimshaw Definitions
