@@ -3,7 +3,7 @@ Internal wave functions
 """
 
 import numpy as np
-from scipy import linalg
+from scipy import linalg, sparse
 from scipy.interpolate import interp1d
 from scipy.integrate import solve_bvp
 from scipy.optimize import least_squares, leastsq
@@ -567,7 +567,66 @@ def _oldsolve_phi_bvp_fd(B, N2, c, dz):
 #####
 # Eigenvalue solver functions
 #####
-def iwave_modes(N2, dz):
+def iwave_modes(N2, dz, k=None):
+    """
+    Calculates the eigenvalues and eigenfunctions to the internal wave eigenvalue problem:
+    
+    $$
+    \left[ \frac{d^2}{dz^2} - \frac{1}{c_0} \bar{\rho}_z \right] \phi = 0
+    $$
+    
+    with boundary conditions 
+    """
+
+    nz = N2.shape[0] # Remove the surface values
+    if k is None:
+        k = nz-2
+
+    dz2 = 1/dz**2
+
+    # Construct the LHS matrix, A
+    #A = np.diag(-1*dz2*np.ones((nz-1)),-1) + \
+    #    np.diag(2*dz2*np.ones((nz,)),0) + \
+    #    np.diag(-1*dz2*np.ones((nz-1)),1)
+    A = np.vstack([-1*dz2*np.ones((nz,)),\
+            2*dz2*np.ones((nz,)),\
+            -1*dz2*np.ones((nz,)),\
+    ])
+
+
+    # BC's
+    eps = 1e-10
+    #A[0,0] = -1.
+    #A[0,1] = 0.
+    #A[-1,-1] = -1.
+    #A[-1,-2] = 0.
+    A[1,0] = -1.
+    A[2,0] = 0.
+    A[1,-1] = -1.
+    A[0,-1] = 0.
+
+    Asparse = sparse.spdiags(A,[-1,0,1],nz,nz, format='csc')
+
+    # Construct the RHS matrix i.e. put N^2 along diagonals
+    #B = np.diag(N2,0)
+    B = sparse.spdiags(N2,[0],nz,nz, format='csc')
+    w, phi = sparse.linalg.eigs(Asparse, M=B, which='SM', k=k)
+
+    # Solve... (use scipy not numpy)
+    #w, phi = linalg.eig(A, b=B)
+
+    c = 1. / np.power(w, 0.5) # since term is ... + N^2/c^2 \phi
+
+    # Sort by the eigenvalues
+    #idx = np.argsort(c)[::-1] # descending order
+
+    ## Calculate the actual phase speed
+    #cn = np.real( c[idx] )
+
+    return phi, np.real(c)
+
+
+def iwave_modes_full(N2, dz):
     """
     Calculates the eigenvalues and eigenfunctions to the internal wave eigenvalue problem:
     

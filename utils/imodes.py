@@ -62,7 +62,7 @@ class IWaveModes(object):
         drho_dz = grad_z(rhoZ, Z,  axis=0)
         N2 = -GRAV*drho_dz/RHO0
 
-        phi, cn = iwave_modes(N2, dz)
+        phi, cn = iwave_modes(N2, dz, k=mode+1)
 
         # Extract the mode of interest
         phi_1 = phi[:,mode]

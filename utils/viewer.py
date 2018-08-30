@@ -156,7 +156,8 @@ class viewer(object):
         if self.xlim is not None:
             ax1.set_xlim(self.xlim)
 
-        ax1.set_ylabel('$\eta(x,t)$ [m]')
+        #ax1.set_ylabel('$\eta(x,t)$ [m]')
+        ax1.set_ylabel('$A(x,t)$ [m]')
 
         ax2.set_ylabel('Depth [m]')
         ax2.set_xlabel(self.xlabel)

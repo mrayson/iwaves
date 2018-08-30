@@ -4,12 +4,12 @@ Test the eigenvalue solver
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import linalg, interpolate
+from scipy import linalg, interpolate, sparse
 
 import iwaves
 import pdb
 
-def iwave_modes_uneven(N2, z):
+def iwave_modes_uneven(N2, z, k=None):
     """
     Calculates the eigenvalues and eigenfunctions to the internal wave eigenvalue problem:
     
@@ -21,6 +21,8 @@ def iwave_modes_uneven(N2, z):
     """
 
     nz = N2.shape[0] 
+    if k is None:
+        k = nz-2
 
     dz = np.zeros((nz,))
     zm = np.zeros((nz,))
@@ -34,24 +36,44 @@ def iwave_modes_uneven(N2, z):
     dzm[-1] = dzm[-2]
 
     # Solve as a matrix
-    A = np.zeros((nz,nz))
+    #A = np.zeros((nz,nz))
+    #for i in range(1,nz-1):
+    #    A[i,i] = 1/ (dz[i-1]*dzm[i]) + 1/(dz[i]*dzm[i])
+    #    A[i,i-1] = -1/(dz[i-1]*dzm[i])
+    #    A[i,i+1] = -1/(dz[i]*dzm[i])
+
+    # Solve as a banded matrix
+    A = np.zeros((nz,3))
     for i in range(1,nz-1):
-        A[i,i] = 1/ (dz[i-1]*dzm[i]) + 1/(dz[i]*dzm[i])
-        A[i,i-1] = -1/(dz[i-1]*dzm[i])
-        A[i,i+1] = -1/(dz[i]*dzm[i])
+        A[i,0] = 1/ (dz[i-1]*dzm[i]) + 1/(dz[i]*dzm[i])
+        A[i,1] = -1/(dz[i-1]*dzm[i])
+        A[i,2] = -1/(dz[i]*dzm[i])
+
+
 
     # BC's
     eps = 1e-10
+    #A[0,0] = -1.
+    #A[0,1] = 0.
+    #A[-1,-1] = -1.
+    #A[-1,-2] = 0.
     A[0,0] = -1.
-    A[0,1] = 0.
-    A[-1,-1] = -1.
-    A[-1,-2] = 0.
+    A[0,2] = 0.
+    A[-1,0] = -1.
+    A[-1,1] = 0.
+
+
+
+    Asparse = sparse.spdiags(A.T,[0,-1,1],nz,nz)
 
     # Construct the RHS matrix i.e. put N^2 along diagonals
-    B = np.diag(N2,0)
+    #B = np.diag(N2,0)
+    B = sparse.spdiags(N2,[0],nz,nz)
 
     # Solve... (use scipy not numpy)
-    w, phi = linalg.eig(A, b=B)
+    #w, phi = linalg.eig(A, b=B)
+    #w, phi = linalg.eig_banded(A, b=B)
+    w, phi = sparse.linalg.eigs(Asparse, M=B, which='SM', k=k)
 
     ## Solve as a banded matrix
     #A = np.zeros((3,nz))
@@ -82,10 +104,10 @@ def iwave_modes_uneven(N2, z):
     phiall = phi[:,idx]
 
     # Normalize so the max(phi)=1
-    for ii in range(nz):
+    for ii in range(k):
         phi_1 = phiall[:,ii]
-	phi_1 = phi_1 / np.abs(phi_1).max()
-	phi_1 *= np.sign(phi_1.sum())
+        phi_1 = phi_1 / np.abs(phi_1).max()
+        phi_1 *= np.sign(phi_1.sum())
         phiall[:,ii] = phi_1
 
     return phiall, cn
@@ -125,7 +147,7 @@ phi, cn,_,Z= IW(-500, 10., mode)
 sout = np.zeros(Z.shape[0]-1,)
 sout[0] = 1.
 for ii in range(1,sout.shape[0]):
-    sout[ii] = sout[ii-1]*1.03
+    sout[ii] = sout[ii-1]*1.0
 
 sout /= np.sum(sout)
 dz = sout*d
