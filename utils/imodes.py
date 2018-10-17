@@ -134,7 +134,7 @@ class IWaveModes(object):
 
         k = omega/c
         tau_s = 1/(alpha*k*a0)
-        return tau_s, c*tau_s
+        return tau_s, c*tau_s, alpha
 
     def plot_modes(self):
 

@@ -175,6 +175,7 @@ class KdV(object):
         # Calculate the linear vertical structure functions
            
         phi, cn = iwave_modes(self.N2, self.dz_s, k=self.mode+1)
+        #phi, cn = iwave_modes_full(self.N2, self.dz_s,)
 
         # Extract the mode of interest
         phi_1 = phi[:,self.mode]

@@ -114,7 +114,7 @@ def iwave_modes_uneven(N2, z, k=None):
 
 d = 500
 Nz = 50
-N = 0.01
+N0 = 0.01
 
 RHO0 = 1024.
 GRAV = 9.81
@@ -128,6 +128,7 @@ dz = np.abs(z[1]-z[0])
 # drho, dp, Li, rho0
 #rhoz = ideal_rho(z, drho, dp, Li) + sig0 # Summer
 
+N = N0+0.000001*z
 N2 = N*N
 drho_dz = -RHO0/GRAV * N2
 

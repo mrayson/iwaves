@@ -54,7 +54,7 @@ def double_tanh_rho_new(z, rho0, rho1, z1, z2, h1, h2):
     """
 
     return rho0 - rho1* (np.tanh((z+z1)/h1) +\
-        np.tanh((z+z2)/h2))
+        np.tanh((z+z1+z2)/h2))
 
 
 def fdiff(coeffs, rho, z,density_func):
