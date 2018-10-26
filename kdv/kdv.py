@@ -71,6 +71,10 @@ class KdV(object):
     # Bottom friction coefficient
     k_chezy = 0.0
 
+    # Sponge layer for RHS
+    spongedist = 0.
+    spongetime = 300.
+
     # time counter
     t = 0.
 
@@ -359,6 +363,7 @@ class KdV(object):
         # Zero ends...
         #diags[:,0] =0.
         #diags[:,-1] =0.
+        self.insert_bcs(diags)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -367,6 +372,46 @@ class KdV(object):
         #M = M.tocsr()
 
         return M
+    
+        
+    def insert_bcs(self, diags):
+        # Set the boundary conditions for the diagonal array
+        #[-2,-1,0,1,2]
+        
+        
+        # top row
+        diags[3,1] = 0
+        diags[4,2] = 0
+        
+        # second row
+        diags[1,0] = 0
+        diags[3,2] = 0
+        diags[4,3] = 0
+        
+        ## Third row???
+        #diags[0,0] = 0
+        #diags[1,1] = 0
+        #diags[3,3] = 0
+        #diags[4,4] = 0
+        
+        Nx = self.Nx-1
+        
+        # bottom row
+        diags[1, Nx-1] = 0
+        diags[0,Nx-2] = 0
+        
+        # Second bottom row
+        diags[1, Nx-2] = 0
+        diags[0, Nx-3] = 0
+        diags[3, Nx] = 0
+
+        ## top row
+        #diags[2,0] = 1
+        #diags[2,1] = 1
+        #diags[2,Nx] = 1
+        #diags[2,Nx-1] = 1
+
+        return
     
     def calc_Bxx(self):
         B = self.B # local pointer
@@ -390,7 +435,7 @@ class KdV(object):
 
 
         # Linear streamfunction
-        psi = A*self.phi_1 #*self.c1
+        psi = A*self.phi_1 
 
         # First-order nonlinear terms
         if nonlinear:

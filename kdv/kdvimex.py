@@ -59,7 +59,11 @@ class KdVImEx(kdv.KdV):
         kdv.KdV.__init__(self, rhoz, z, wavefunc=wavefunc, **kwargs)
 
         # Construct the RHS linear operator (matrix)
-        self.L_rhs, diags = self.build_linear_matrix()
+        #self.L_rhs, diags = self.build_linear_matrix()
+        diags = self.build_linear_diags()
+        self.insert_bcs(diags)
+        self.L_rhs = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
+
 
         # Construct the LHS
         #L_lhs,diags = self.build_lhs_matrix()
@@ -68,7 +72,7 @@ class KdVImEx(kdv.KdV):
         self.L_lhs,diags = self.build_lhs_matrix()
 
 
-    def solve_step(self):
+    def solve_step(self, bc_left=0, bc_right=0):
         """
         Solve the current step
         """
@@ -109,6 +113,16 @@ class KdVImEx(kdv.KdV):
         # Use the direct banded matrix solver (faster)
         self.B_n_p1[:] = la.solve_banded( (2,2), self.L_lhs.data[::-1,:], RHS)
 
+        ##
+        # Insert BCs
+        self.B_n_p1[self.Nx-2] = bc_right
+        self.B_n_p1[self.Nx-1] = bc_right
+
+        self.B_n_p1[0] = bc_left
+        self.B_n_p1[1] = bc_left
+        #self.B_n_p1[2] = bc_left
+
+
         # Check solutions
         if np.any( np.isnan(self.B_n_p1)):
             return -1
@@ -129,7 +143,7 @@ class KdVImEx(kdv.KdV):
         #diags *= self.dt_s*(1+self.c_im)*0.5
         #diags[2,:] = self.alpha_1 - diags[2,:]
 
-        M,diags1 = self.build_linear_matrix()
+        diags1 = self.build_linear_diags()
 
         # Ones down primary diagonal
         diags2 = np.zeros_like(diags1)
@@ -137,6 +151,8 @@ class KdVImEx(kdv.KdV):
 
         cff = self.dt_s*(1+self.c_im)*0.5        
         diags =  diags2 - cff*diags1
+        
+        self.insert_bcs(diags)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -169,6 +185,12 @@ class KdVImEx(kdv.KdV):
         if self.k_chezy > 0:
             cff = -self.k_chezy*self.c1 / self.H**2.
             diags[2,:] += cff * np.abs(An)
+        
+        # RHS sponge term
+        if self.spongedist>0:
+            rdist = self.x[-1] - self.x
+            spongefac = -np.exp(-6*rdist/self.spongedist)/self.spongetime
+            diags[2,:] += spongefac 
 
         return diags
 
@@ -177,12 +199,15 @@ class KdVImEx(kdv.KdV):
         Build the nonlinear steepening term
         """
         diags = self.build_nonlinear_diags(An)
+        
+        self.insert_bcs(diags)
+
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 
         return M
 
-    def build_linear_matrix(self):
+    def build_linear_diags(self):
         """
         Build the linear matrices
         """
@@ -200,10 +225,12 @@ class KdVImEx(kdv.KdV):
         
         # Dispersion term (2nd order)
         if self.nonhydrostatic:
-            diags[0,:] += -0.5*cff1*dx3 * np.ones((self.Nx,))
-            diags[1,:] += (+cff1*dx3) * np.ones((self.Nx,))
-            diags[3,:] += (-cff1*dx3) * np.ones((self.Nx,))
-            diags[4,:] += 0.5*cff1*dx3 * np.ones((self.Nx,))
+            ones = np.ones((self.Nx,))
+            #ones[self.Nx-4:self.Nx] =0.
+            diags[0,:] += -0.5*cff1*dx3 * ones
+            diags[1,:] += (+cff1*dx3) * ones
+            diags[3,:] += (-cff1*dx3) * ones
+            diags[4,:] += 0.5*cff1*dx3 * ones
 
         # Dispersion term (4th order)
         #diags[0,:] += -1/8.*cff1*dx3 * np.ones((self.Nx,))
@@ -235,80 +262,8 @@ class KdVImEx(kdv.KdV):
         #diags[4,:] += c5*nu_H*dx2 * np.ones((self.Nx,))
 
         # Build the sparse matrix
-        M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
+        #M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 
-        return M, diags
-
-class KdVTheta(KdVImEx):
-
-    # Typical SUNTANS value
-    theta = 0.55
-
-    # Leapfrog
-    beta0 = 1.
-    betam1 = 0.
-    betam2 = 0.
-
-    def __init__(self, rhoz, z, wavefunc=iwaves.sine, **kwargs):
-        """
-        Numerical KdV solution using the "theta method"
-
-        Consistent with SUNTANS time stepping
-        """
-        KdVImEx.__init__(self, rhoz, z, wavefunc=wavefunc, **kwargs)
-
-    def solve_step(self):
-        """
-        Solve the current step
-        """
-        status = 0
-
-        ### Construct the RHS vector
-
-        # Implicit terms
-        cff2 = (1-self.theta)*self.dt_s
-        RHS = cff2*self.L_rhs.dot(self.B)
-
-        # Explicit terms (nonlinear terms)
-        if self.nonlinear:
-            M_n = self.build_nonlinear_matrix(self.B)
-            cff3 = self.beta0*self.dt_s
-            RHS += cff3*M_n.dot(self.B)
-
-        # Other terms from the time-derivative
-        RHS += self.B
-
-        ##
-        # Solve for B_n_p1
-        self.B_n_p1[:] = linalg.spsolve(self.L_lhs, RHS)
-
-        # Check solutions
-        if np.any( np.isnan(self.B_n_p1)):
-            return -1
-
-        # Update the terms last
-        self.B_n_m2[:] = self.B_n_m1
-        self.B_n_m1[:] = self.B
-        self.B[:] = self.B_n_p1
-
-        return status
-
-    def build_lhs_matrix(self):
-        """
-        Build the LHS sparse matrix
-        """
-        M,diags1 = self.build_linear_matrix()
-
-        # Ones down primary diagonal
-        diags2 = np.zeros_like(diags1)
-        diags2[2,:] = 1.
-
-        cff = self.dt_s*self.theta        
-        diags =  diags2 - cff*diags1
-
-        # Build the sparse matrix
-        M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
-
-        return M, diags
+        return diags
 
 

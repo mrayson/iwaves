@@ -10,13 +10,17 @@ from .vkdv import vKdV
 import numpy as np
 import xarray as xray
 
+def zerobc(t):
+    return 0
+
 def solve_kdv(rho, z, runtime,\
         solver='imex',
-        h=None,
         x=None,
+        h=None,
         mode=0,
         ntout=None, outfile=None,\
         myfunc=None,
+        bcfunc=zerobc,
         verbose=True, **kwargs):
     """
     function for generating different soliton scenarios
@@ -28,13 +32,13 @@ def solve_kdv(rho, z, runtime,\
 
     # Initialize the KdV object
     if solver=='imex':
-        mykdv = KdVImEx(rho, z, **kwargs)
+        mykdv = KdVImEx(rho, z, x=x,**kwargs)
     elif solver=='explicit':
-        mykdv = KdV(rho, z, **kwargs)
+        mykdv = KdV(rho, z, x=x, **kwargs)
     elif solver=='vkdv':
         mykdv = vKdV(rho, z, h, x, mode, **kwargs)
     elif solver=='damped':
-        mykdv = KdVDamp(rho, z, **kwargs)
+        mykdv = KdVDamp(rho, z, x=x, **kwargs)
     else:
         raise Exception('unknown solver %s'%solver)
 
@@ -54,7 +58,7 @@ def solve_kdv(rho, z, runtime,\
             if(ii % (5 * point) == 0):
                  print('%3.1f %% complete...'%(float(ii)/nsteps*100))
 
-        if mykdv.solve_step() != 0:
+        if mykdv.solve_step(bc_left=bcfunc(mykdv.t)) != 0:
             print('Blowing up at step: %d'%ii)
             break
         

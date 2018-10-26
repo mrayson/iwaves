@@ -215,6 +215,9 @@ class vKdV(KdV):
         # Add on the Q-term
         diags[2,:] += self.Qterm
 
+        # Adjust for the Neumann boundary conditions
+        self.insert_bcs(diags)
+
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 

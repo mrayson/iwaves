@@ -15,8 +15,9 @@ def from_netcdf(kdvfile):
     
     # These are the attributes that KdV requires
     #attrs = ['L_d','Nx','Lw','a0','Cmax','nu_H','x0']
-    attrs = ['Nx',\
-                'L_d',\
+    attrs = [  
+                #'Nx',\
+                #'L_d',\
                 'a0',\
                 'Lw',\
                 'x0',\
@@ -43,9 +44,10 @@ def from_netcdf(kdvfile):
 
     z = kdvx.z.values
     rhoz = kdvx.rhoz.values
+    x= kdvx.x.values
 
     # Let the class compute everything else...
-    kdv = KdV(rhoz, z, **kwargs)
+    kdv = KdV(rhoz, z, x=x, **kwargs)
 
     # Set the amplitude function
     kdv.B[:] = kdvx.B.values
