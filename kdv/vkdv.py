@@ -10,7 +10,7 @@ from .kdvimex import  KdVImEx as KdV
 from iwaves.utils import isw 
 from iwaves.utils.tools import grad_z
 
-import xray
+import xarray as xray
 
 import pdb
 
