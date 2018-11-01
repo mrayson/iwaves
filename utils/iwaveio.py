@@ -32,6 +32,7 @@ def from_netcdf(kdvfile):
                 'epsilon',\
                 'r01',\
                 'r10',\
+                'spongedist',\
                 't',\
                 #'ekdv',
         ]
@@ -81,13 +82,14 @@ def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None):
         ds.rhoZ.values[:,0],
         ds.Z.values[:,0],
         ds.h.values,
-	x=ds.x.values,\
+        x=ds.x.values,\
         mode=ds.mode,\
-	a0=a0,\
-	Lw=ds.Lw,\
-	x0=0,\
+        a0=a0,\
+        Lw=ds.Lw,\
+        x0=0,\
         nu_H=ds.nu_H,\
-	Cmax=ds.Cmax,\
+        spongedist=ds.spongedist,\
+        Cmax=ds.Cmax,\
         dt=ds.dt_s,
         Cn=ds.Cn.values,
         Phi=ds.Phi.values,

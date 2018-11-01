@@ -354,7 +354,7 @@ class vKdV(KdV):
             'l96' lamb 1996
         """
         b = self.calc_buoyancy(nonlinear=nonlinear)
-        return RHO0*(b/GRAV) + self.rhoZ - RHO0
+        return RHO0*(b/GRAV) + self.rhoZ.T - RHO0
 
     def calc_velocity(self, nonlinear=True):
         """
@@ -524,6 +524,7 @@ class vKdV(KdV):
                 'dx_s',\
                 'dz_s',\
                 'dt_s',\
+                'spongedist',\
                 #'c1',\
                 #'mu',\
                 #'epsilon',\
