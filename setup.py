@@ -8,6 +8,6 @@ setup(name='iwaves',
       author='Matt Rayson',
       author_email='matt.rayson@uwa.edu.au',
       #packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-	  packages=['iwaves.utils','iwaves.kdv']
+	  packages=['iwaves.utils','iwaves.kdv'],
       license='LICENSE',
     )
