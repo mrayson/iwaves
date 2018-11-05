@@ -3,7 +3,7 @@ KdV Solution viewer
 """
 
 import sys
-from iwaves import from_netcdf
+from iwaves.utils.iwaveio import from_netcdf
 from iwaves.utils.iwaveio import vkdv_from_netcdf
 
 from datetime import datetime

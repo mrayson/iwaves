@@ -9,5 +9,6 @@ setup(name='iwaves',
       author_email='matt.rayson@uwa.edu.au',
       #packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
 	  packages=['iwaves.utils','iwaves.kdv'],
+      indstall_requires=['numpy','scipy','matplotlib','gsw','netcdf4','xarray'],
       license='LICENSE',
     )
