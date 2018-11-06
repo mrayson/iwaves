@@ -121,7 +121,7 @@ class viewer(object):
         plt.grid(b=True)
 
         self.ax2 = plt.subplot2grid((9,3), (2,0), colspan=3, rowspan=6,\
-                sharex=self.ax1, axisbg='0.5')
+                sharex=self.ax1, )
         self.create_scene(self.ax1, self.ax2, u, rho)
 
         if self.use_slider:
