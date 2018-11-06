@@ -329,8 +329,8 @@ class vKdV(KdV):
         # Use the dimensional N2
         N2 = 1*self.N2
         
-        A = B /self.c1
-        A_xx = B_xx / self.c1
+        A = B * self.c1
+        A_xx = B_xx * self.c1
         
         # Linear component
         b = A[np.newaxis,:]*self.phi_1*N2/self.c1[np.newaxis,:]
