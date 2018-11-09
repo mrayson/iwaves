@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import linalg, interpolate, sparse
 
-import iwaves
+from iwaves.utils import imodes as iwaves
 import pdb
 
 def iwave_modes_uneven(N2, z, k=None):
