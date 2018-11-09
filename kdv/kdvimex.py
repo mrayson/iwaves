@@ -225,8 +225,9 @@ class KdVImEx(kdv.KdV):
         
         # Dispersion term (2nd order)
         if self.nonhydrostatic:
-            ones = np.ones((self.Nx,))
+            ones =np.ones((self.Nx,))
             #ones[self.Nx-4:self.Nx] =0.
+            #ones[0:5] = 0.
             diags[0,:] += -0.5*cff1*dx3 * ones
             diags[1,:] += (+cff1*dx3) * ones
             diags[3,:] += (-cff1*dx3) * ones

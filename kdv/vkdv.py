@@ -113,7 +113,8 @@ class vKdV(KdV):
                 self.calc_vkdv_params(Nz, Nx)
 
         # Now initialise the class
-        KdV.__init__(self, rhoz, z, wavefunc=wavefunc, x=x, mode=mode, ekdv=ekdv, **kwargs)
+        KdV.__init__(self, rhoz, z, wavefunc=wavefunc, x=x, mode=mode, \
+            ekdv=ekdv, **kwargs)
 
         self.c1 = self.Cn
 
@@ -190,8 +191,11 @@ class vKdV(KdV):
             Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
                 Cn[ii], Cn[0], self.dZ[ii], self.dZ[0])
 
+        # Zero beta near the boundary
+
         # Weight the nonlinear terms
-        Alpha *= self.fweight
+        #Alpha *= self.fweight
+        Beta *= self.fweight
 
         # Calculate the Q-term in the equation here
         Q_x = np.gradient(Q, self.dx)
@@ -200,17 +204,17 @@ class vKdV(KdV):
         return Phi, Cn ,Alpha, Beta, Qterm
 
 
-    def build_linear_matrix(self):
+    def build_linear_diags(self):
         """
         Build the linear matrices
 
-	Overloaded function to include:
+        Overloaded function to include:
 	    - spatially variable coefficients
 	    - topographic amplification term
         """
         #self.r10 = -self.Alpha
         #self.r01 = -self.Beta
-        M,diags = KdV.build_linear_matrix(self)
+        diags = KdV.build_linear_diags(self)
 
         # Add on the Q-term
         diags[2,:] += self.Qterm
@@ -218,10 +222,10 @@ class vKdV(KdV):
         # Adjust for the Neumann boundary conditions
         self.insert_bcs(diags)
 
-        # Build the sparse matrix
-        M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
+        ## Build the sparse matrix
+        #M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 
-        return M, diags
+        return diags
 
     def calc_linearstructure(self):
     	return self.Phi, self.Cn

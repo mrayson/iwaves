@@ -388,7 +388,7 @@ class KdV(object):
         diags[3,2] = 0
         diags[4,3] = 0
         
-        ## Third row???
+        ### Third row???
         #diags[0,0] = 0
         #diags[1,1] = 0
         #diags[3,3] = 0
