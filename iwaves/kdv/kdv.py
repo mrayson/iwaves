@@ -92,6 +92,10 @@ class KdV(object):
         """
         self.__dict__.update(**kwargs)
                 
+        # Check that the density profile is monotonic
+        if np.any(np.diff(rhoz)<0):
+            raise Exception("Density profile must be monotonic and ordered from surface to seabed")
+
         # These need to be copied...
         self.rhoz = 1*rhoz
         self.z = 1*z
