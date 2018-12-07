@@ -84,6 +84,8 @@ class KdV(object):
 
     # Nonlinear scaling factor for r10 (for testing)
     nonlin_scale = 1.
+
+    bcs = [0,0,0] # n+1, n, n-1
     
     
     def __init__(self, rhoz, z, wavefunc=sine, **kwargs):
@@ -211,7 +213,7 @@ class KdV(object):
         
         return B_n_m2, B_n_m1, B, B_n_p1, 
         
-    def solve_step(self):
+    def solve_step(self, bc_left=0, bc_right=0):
         """
         Solve the KdV for one time step
         """    
@@ -222,8 +224,20 @@ class KdV(object):
 
         # Solve the next step
 
+
+        # Compute RHS w/ explicit centered difference (in time) method
+        cff = 2*self.dt_s
+        RHS = M.dot(self.B)
+
         # Second-order time stepping
-        self.B_n_p1[:] = self.B_n_m1 + 2*self.dt_s * M.dot(self.B)
+        self.B_n_p1[:] = self.B_n_m1 + cff*RHS
+
+        # Add Dirichlet BCs into RHS
+        self.add_bcs(self.B_n_p1, cff, self.bcs[0])
+        self.bcs[2] = self.bcs[1]
+        self.bcs[1] = self.bcs[0]
+        self.bcs[0]= bc_left
+
 
         # First-order time stepping
         #self.B_n_p1[:] = self.B + self.dt_s * M.dot(self.B)
@@ -293,10 +307,12 @@ class KdV(object):
 
         # Dispersion term (2nd order)
         if self.nonhydrostatic:
-            diags[0,:] += -0.5*cff1*dx3 * np.ones((self.Nx,)) # i-2
-            diags[1,:] += (+cff1*dx3) * np.ones((self.Nx,)) # i-1
-            diags[3,:] += (-cff1*dx3) * np.ones((self.Nx,)) # i+1
-            diags[4,:] += 0.5*cff1*dx3 * np.ones((self.Nx,)) # i+2
+            ones = np.ones((self.Nx,))
+            #ones[0] = 0.
+            diags[0,:] += -0.5*cff1*dx3 * ones # i-2
+            diags[1,:] += (+cff1*dx3) * ones # i-1
+            diags[3,:] += (-cff1*dx3) * ones # i+1
+            diags[4,:] += 0.5*cff1*dx3 * ones # i+2
 
         # Dispersion term (4th order)
         #diags[0,:] += -1/8.*cff1*dx3 * np.ones((self.Nx,))
@@ -364,10 +380,7 @@ class KdV(object):
             #diags[1,1:] = diags[1,1:] - cff5*An2[0:-1] # i-1
             #diags[3,0:-1] = diags[3,0:-1] + cff5*An2[1:] # i+1
             
-        # Zero ends...
-        #diags[:,0] =0.
-        #diags[:,-1] =0.
-        self.insert_bcs(diags)
+        #self.insert_bcs(diags)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -378,6 +391,24 @@ class KdV(object):
         return M
     
         
+    def add_bcs(self, RHS, cff, A_l):
+        # Add boundary condition terms to the RHS
+        r01 = self.r01
+        c = self.c1
+
+        dx_i = 1/(2*self.dx_s)
+        dx3_i = 1./np.power(self.dx_s,3.)
+
+        #A_ll = A_l-cff*c*(self.B_n_m1[1]-A_l)*dx_i
+        A_ll = A_l
+        # Left Dirichlet (linear terms)
+        RHS[0] += cff*(c*A_l*dx_i)
+        if self.nonhydrostatic:
+            RHS[0] += +cff*r01*1.0*A_l*dx3_i
+            RHS[0] += -cff*r01*0.5*A_ll*dx3_i
+            RHS[1] += -cff*r01*0.5*A_l*dx3_i
+
+
     def insert_bcs(self, diags):
         # Set the boundary conditions for the diagonal array
         #[-2,-1,0,1,2]
@@ -392,11 +423,11 @@ class KdV(object):
         diags[3,2] = 0
         diags[4,3] = 0
         
-        ### Third row???
-        #diags[0,0] = 0
-        #diags[1,1] = 0
-        #diags[3,3] = 0
-        #diags[4,4] = 0
+        # Third row
+        diags[0,0] = 0
+        diags[1,1] = 0
+        diags[3,3] = 0
+        diags[4,4] = 0
         
         Nx = self.Nx-1
         

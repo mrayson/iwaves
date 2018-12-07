@@ -61,7 +61,7 @@ class KdVImEx(kdv.KdV):
         # Construct the RHS linear operator (matrix)
         #self.L_rhs, diags = self.build_linear_matrix()
         diags = self.build_linear_diags()
-        self.insert_bcs(diags)
+        #self.insert_bcs(diags)
         self.L_rhs = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 
 
@@ -87,6 +87,8 @@ class KdVImEx(kdv.KdV):
         RHS = cff1*self.L_rhs.dot(self.B) +\
                 cff2*self.L_rhs.dot(self.B_n_m1)
 
+
+
         # Explicit terms (nonlinear terms)
         if self.nonlinear:
             M_n = self.build_nonlinear_matrix(self.B)
@@ -101,9 +103,21 @@ class KdVImEx(kdv.KdV):
             RHS += cff4*M_n_m1.dot(self.B_n_m1)
             RHS += cff5*M_n_m2.dot(self.B_n_m2)
 
+
         # Other terms from the time-derivative
         RHS -= self.alpha_0*self.B
         RHS -= self.alpha_m1*self.B_n_m1
+
+
+        # Add the BCs to the RHS
+        self.add_bcs(RHS, 4*cff1, self.bcs[1]) #n
+        self.add_bcs(RHS, 4*cff2, self.bcs[2]) #n-1
+        self.bcs[2] = self.bcs[1]
+        self.bcs[1] = self.bcs[0]
+        self.bcs[0]= bc_left
+
+        # Insert BCs
+        #RHS[0:3] = bc_left
 
         ##
         # Solve for B_n_p1
@@ -115,12 +129,10 @@ class KdVImEx(kdv.KdV):
 
         ##
         # Insert BCs
-        self.B_n_p1[self.Nx-2] = bc_right
-        self.B_n_p1[self.Nx-1] = bc_right
+        #self.B_n_p1[self.Nx-2] = bc_right
+        #self.B_n_p1[self.Nx-1] = bc_right
 
-        self.B_n_p1[0] = bc_left
-        self.B_n_p1[1] = bc_left
-        #self.B_n_p1[2] = bc_left
+        #self.B_n_p1[0:3] = bc_left
 
 
         # Check solutions
@@ -152,7 +164,7 @@ class KdVImEx(kdv.KdV):
         cff = self.dt_s*(1+self.c_im)*0.5        
         diags =  diags2 - cff*diags1
         
-        self.insert_bcs(diags)
+        #self.insert_bcs(diags)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -200,7 +212,7 @@ class KdVImEx(kdv.KdV):
         """
         diags = self.build_nonlinear_diags(An)
         
-        self.insert_bcs(diags)
+        #self.insert_bcs(diags)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
