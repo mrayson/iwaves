@@ -57,7 +57,7 @@ def double_tanh_rho_new(z, rho0, rho1, z1, z2, h1, h2):
         np.tanh((z+z1+z2)/h2))
 
 
-def fdiff(coeffs, rho, z,density_func):
+def fdiff(coeffs, rho, z, density_func):
 
     if density_func=='double_tanh':
         soln = double_tanh_rho(z, *coeffs)
@@ -65,11 +65,14 @@ def fdiff(coeffs, rho, z,density_func):
         soln = double_tanh_rho_new(z, *coeffs)
     elif density_func=='single_tanh':
         soln = single_tanh_rho(z, *coeffs)
+    else:
+        soln = density_func(z, coeffs)
 
     #print coeffs[-4], coeffs[-3], coeffs[-2], coeffs[-1]
     return rho - soln
 
-def fit_rho(rho, z, density_func='single_tanh', errmax=1.0):
+def fit_rho(rho, z, density_func='single_tanh', errmax=1.0,
+        bounds=None, initguess=None):
     """
     Fits an analytical density profile to data
 
@@ -101,7 +104,7 @@ def fit_rho(rho, z, density_func='single_tanh', errmax=1.0):
         #bounds = [(0,10.),(0,10.),(0,H),(0,H),(0,H/2),(0,H/2)]
         bounds = [(rho0-5,0.,0.,0.,0.,H/20.,H/20.),(rho0+5,10.,10.,H,H,H/2,H/2)]
 
-    if density_func=='double_tanh_new':
+    elif density_func=='double_tanh_new':
         initguess = [rho0, 0.01, 1., 2., H/10., H/10.] # double tanh guess
         #bounds = [(0,10.),(0,10.),(0,H),(0,H),(0,H/2),(0,H/2)]
         bounds = [(rho0-5,0.,0.,0.,H/20.,H/20.),(rho0+5,10.,H,H,H/2,H/2)]
@@ -109,6 +112,8 @@ def fit_rho(rho, z, density_func='single_tanh', errmax=1.0):
     elif density_func=='single_tanh':
         initguess = [rho0, 1e-3, 40., 100.] # single stratification function
         bounds = [(rho0-5,0.,0.,0.),(rho0+5,10.,2*H,2*H)]
+    #else: User must set bounds
+        
 
     soln =\
         least_squares(fdiff, initguess, args=(rhotry, z, density_func), \
@@ -131,6 +136,8 @@ def fit_rho(rho, z, density_func='single_tanh', errmax=1.0):
         rhofit = double_tanh_rho_new(z, *f0)# + rho0
     elif density_func=='single_tanh':
         rhofit = single_tanh_rho(z, *f0)
+    else:
+        rhofit = density_func(z, f0)
     
     err = np.linalg.norm(rhofit - rhotry)
     if err > errmax:
@@ -146,13 +153,16 @@ class FitDensity(object):
     """
 
     density_func = 'single_tanh'
+    bounds = None
+    initguess = None
 
     def __init__(self, rho, z, **kwargs):
         
         self.__dict__.update(**kwargs)
 
         self.rho0 = rho.min()
-        rhofit, self.f0, self.status = fit_rho(rho, z, density_func=self.density_func)
+        rhofit, self.f0, self.status = fit_rho(rho, z, density_func=self.density_func,
+            bounds=self.bounds, initguess=self.initguess)
 
     def __call__(self, Z):
 
@@ -160,11 +170,14 @@ class FitDensity(object):
         if self.density_func=='double_tanh':
             return double_tanh_rho(Z, *f0)# + self.rho0
 
-        if self.density_func=='double_tanh_new':
+        elif self.density_func=='double_tanh_new':
             return double_tanh_rho_new(Z, *f0)# + self.rho0
 
         elif self.density_func=='single_tanh':
             return single_tanh_rho(Z, *f0) 
+
+        else:
+            return self.density_func(Z, f0)
 
 class InterpDensity(object):
     """
