@@ -195,7 +195,7 @@ class vKdV(KdV):
 
         # Weight the nonlinear terms
         #Alpha *= self.fweight
-        Beta *= self.fweight
+        #Beta *= self.fweight
 
         # Calculate the Q-term in the equation here
         Q_x = np.gradient(Q, self.dx)
