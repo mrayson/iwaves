@@ -28,16 +28,20 @@ def calc_beta(phi, c, dz):
 
     return num/den
 
-def calc_Qamp(phi, phi0, c, c0, dz, dz0):
+def calc_Qamp(phi, c, dz):
+    """Small 2001 definition
+    Normalizing is not necessary as it cancels out"""
+    phi_z = np.gradient(phi, dz)
+    return c**3. * np.trapz( phi_z**2., dx=dz)
+
+def calc_Qamp_old(phi, phi0, c, c0, dz, dz0):
+    """Holloway 1997 definition"""
     phi0_z = np.gradient(phi0, dz0)
     phi_z = np.gradient(phi, dz)
-    num = c0**3. * np.trapz( phi0_z**2., dx=dz0)
-    den = c**3. * np.trapz( phi_z**2., dx=dz)
-    #num = c0**3. * np.sum( phi0_z**2. * dz0)
-    #den = c**3. * np.sum( phi_z**2. * dz)
+    den = c0**3. * np.trapz( phi0_z**2., dx=dz0)
+    num = c**3. * np.trapz( phi_z**2., dx=dz)
 
-    return np.sqrt(num/den)
-
+    return num/den
 
 GRAV=9.81
 RHO0=1000.
@@ -148,7 +152,7 @@ class vKdV(KdV):
         phi0 *= np.sign(phi0.sum())
  
         for ii in range(0, Nx, self.Nsubset):
-            point = Nx/100
+            point = Nx//100
             if(ii % (5 * point) == 0):
                 print('%3.1f %% complete...'%(float(ii)/Nx*100))
 
@@ -188,8 +192,9 @@ class vKdV(KdV):
             phi_1 = Phi[:,ii]
             Alpha[ii] = calc_alpha(phi_1, c1, self.dZ[ii])
             Beta[ii] = calc_beta(phi_1, c1, self.dZ[ii])
-            Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
-                Cn[ii], Cn[0], self.dZ[ii], self.dZ[0])
+            Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
+            #Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
+            #    Cn[ii], Cn[0], self.dZ[ii], self.dZ[0])
 
         # Zero beta near the boundary
 
@@ -197,11 +202,11 @@ class vKdV(KdV):
         #Alpha *= self.fweight
         #Beta *= self.fweight
 
-        # Calculate the Q-term in the equation here
-        Q_x = np.gradient(Q, self.dx)
-        Qterm = Cn/(2.*Q) * Q_x
+        ## Calculate the Q-term in the equation here
+        #Q_x = np.gradient(Q, self.dx)
+        #Qterm = Cn/(2.*Q) * Q_x
 
-        return Phi, Cn ,Alpha, Beta, Qterm
+        return Phi, Cn ,Alpha, Beta, Q
 
 
     def build_linear_diags(self):
@@ -217,15 +222,49 @@ class vKdV(KdV):
         diags = KdV.build_linear_diags(self)
 
         # Add on the Q-term
-        diags[2,:] += self.Qterm
+        #diags[2,:] += self.Qterm
+        self.add_topo_effects(diags)
 
-        # Adjust for the Neumann boundary conditions
+        # Adjust for the Dirichlet boundary conditions
         self.insert_bcs(diags)
 
         ## Build the sparse matrix
         #M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 
         return diags
+
+    def add_topo_effects(self, diags):
+        """
+        Add the topographic effect terms to the LHS FD matrix
+        """
+        diags[2,:] += self.Cn / (2*self.Qterm)
+        diags[1,:] -= self.Qterm / (2*self.dx_s)
+        diags[3,:] += self.Qterm / (2*self.dx_s)
+        return diags
+
+    def add_bcs(self, RHS, cff, A_l):
+        # Add boundary condition terms to the RHS
+        r01 = -self.Beta[0]
+        c = self.Cn[0]
+
+        dx_i = 1/(2*self.dx_s)
+        dx3_i = 1./np.power(self.dx_s,3.)
+
+        #A_ll = A_l-cff*c*(self.B_n_m1[1]-A_l)*dx_i
+        A_ll = A_l
+        # Left Dirichlet (linear terms)
+        
+        # Propagation term
+        RHS[0] += cff*(c*A_l*dx_i)
+        
+        # Dispersion term
+        if self.nonhydrostatic:
+            RHS[0] += +cff*r01*1.0*A_l*dx3_i
+            RHS[0] += -cff*r01*0.5*A_ll*dx3_i
+            RHS[1] += -cff*r01*0.5*A_l*dx3_i
+        
+        # Topographic amplification term...TODO
+
 
     def calc_linearstructure(self):
     	return self.Phi, self.Cn
@@ -241,7 +280,7 @@ class vKdV(KdV):
 
         print('Calculating nonlinear structure functions...')
         for ii in range(0, self.Nx, self.Nsubset):
-            point = self.Nx/100
+            point = self.Nx//100
             if(ii % (5 * point) == 0):
                 print('%3.1f %% complete...'%(float(ii)/self.Nx*100))
 

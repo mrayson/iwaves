@@ -87,8 +87,6 @@ class KdVImEx(kdv.KdV):
         RHS = cff1*self.L_rhs.dot(self.B) +\
                 cff2*self.L_rhs.dot(self.B_n_m1)
 
-
-
         # Explicit terms (nonlinear terms)
         if self.nonlinear:
             M_n = self.build_nonlinear_matrix(self.B)
