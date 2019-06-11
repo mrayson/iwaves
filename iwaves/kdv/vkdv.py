@@ -8,7 +8,7 @@ from scipy import sparse
 
 from .kdvimex import  KdVImEx as KdV
 from iwaves.utils import isw 
-from iwaves.utils.tools import grad_z
+from iwaves.utils.tools import grad_z, quadinterp
 
 import xarray as xray
 
@@ -28,13 +28,13 @@ def calc_beta(phi, c, dz):
 
     return num/den
 
-def calc_Qamp(phi, c, dz):
+def calc_Qamp_new(phi, c, dz):
     """Small 2001 definition
     Normalizing is not necessary as it cancels out"""
     phi_z = np.gradient(phi, dz)
     return c**3. * np.trapz( phi_z**2., dx=dz)
 
-def calc_Qamp_old(phi, phi0, c, c0, dz, dz0):
+def calc_Qamp(phi, phi0, c, c0, dz, dz0):
     """Holloway 1997 definition"""
     phi0_z = np.gradient(phi0, dz0)
     phi_z = np.gradient(phi, dz)
@@ -192,9 +192,9 @@ class vKdV(KdV):
             phi_1 = Phi[:,ii]
             Alpha[ii] = calc_alpha(phi_1, c1, self.dZ[ii])
             Beta[ii] = calc_beta(phi_1, c1, self.dZ[ii])
-            Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
-            #Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
-            #    Cn[ii], Cn[0], self.dZ[ii], self.dZ[0])
+            #Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
+            Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
+                Cn[ii], Cn[0], self.dZ[ii], self.dZ[0])
 
         # Zero beta near the boundary
 
@@ -224,9 +224,9 @@ class vKdV(KdV):
         # Add on the Q-term
         #diags[2,:] += self.Qterm
         self.add_topo_effects(diags)
-
+        
         # Adjust for the Dirichlet boundary conditions
-        self.insert_bcs(diags)
+        #self.insert_bcs(diags)
 
         ## Build the sparse matrix
         #M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -237,12 +237,20 @@ class vKdV(KdV):
         """
         Add the topographic effect terms to the LHS FD matrix
         """
-        diags[2,:] += self.Cn / (2*self.Qterm)
-        diags[1,:] -= self.Qterm / (2*self.dx_s)
-        diags[3,:] += self.Qterm / (2*self.dx_s)
-        return diags
+        #cff = self.Cn / (2*self.Qterm)
+        #dx2 = 1/(2*self.dx_s)
+        #dQdx = np.ones_like(self.Qterm)
+        #dQdx[1:-1] = (self.Qterm[2::] - self.Qterm[0:-2])*dx2
 
-    def add_bcs(self, RHS, cff, A_l):
+        #diags[2,:] += cff*dQdx
+        Q_x = np.gradient(self.Qterm, self.dx_s)
+        Qterm = self.Cn/(2.*self.Qterm) * Q_x
+        diags[2,:] += Qterm
+
+        #diags[1,:] += cff*self.Qterm*dx2
+        #diags[3,:] -= cff*self.Qterm*dx2
+
+    def add_bcs_rhs(self, RHS, cff, A_l):
         # Add boundary condition terms to the RHS
         r01 = -self.Beta[0]
         c = self.Cn[0]
@@ -251,19 +259,22 @@ class vKdV(KdV):
         dx3_i = 1./np.power(self.dx_s,3.)
 
         #A_ll = A_l-cff*c*(self.B_n_m1[1]-A_l)*dx_i
-        A_ll = A_l
+        #A_0 = A_l
+        # Quadratic interpolation
+        dx=self.dx_s
+        A_0 = quadinterp(dx,0,2*dx,3*dx,A_l,RHS[2],RHS[3])
+
         # Left Dirichlet (linear terms)
         
-        # Propagation term
-        RHS[0] += cff*(c*A_l*dx_i)
-        
-        # Dispersion term
+        # Left Dirichlet (linear terms)
+        RHS[0] += cff*(c*A_0*dx_i)
         if self.nonhydrostatic:
-            RHS[0] += +cff*r01*1.0*A_l*dx3_i
-            RHS[0] += -cff*r01*0.5*A_ll*dx3_i
-            RHS[1] += -cff*r01*0.5*A_l*dx3_i
-        
-        # Topographic amplification term...TODO
+            RHS[0] += cff*r01*1.0*A_0*dx3_i
+            RHS[0] -= cff*r01*0.5*A_l*dx3_i
+            RHS[1] -= cff*r01*0.5*A_0*dx3_i
+
+       
+        # Topographic amplification term...not neccessary as it's on the main diag
 
 
     def calc_linearstructure(self):
@@ -362,7 +373,7 @@ class vKdV(KdV):
             
         return psi
 
-    def calc_buoyancy(self, nonlinear=True):
+    def calc_buoyancy_l96(self, nonlinear=True):
         """
         Calculate the buoyancy perturbation: b = g*rho'
         """
@@ -370,13 +381,13 @@ class vKdV(KdV):
         B_xx = self.calc_Bxx()
 
         # Use the dimensional N2
-        N2 = 1*self.N2
+        N2 = self.N2
         
-        A = B * self.c1
-        A_xx = B_xx * self.c1
+        A = B #* self.c1
+        A_xx = B_xx #* self.c1
         
         # Linear component
-        b = A[np.newaxis,:]*self.phi_1*N2/self.c1[np.newaxis,:]
+        b = A[np.newaxis,:]*self.phi_1*N2#/self.c1[np.newaxis,:]
         
         ## Nonlinear components
         if nonlinear:
@@ -388,6 +399,29 @@ class vKdV(KdV):
         
         return b.T # Need to return the dimensions
 
+    def calc_buoyancy_h99(self, nonlinear=True):
+        """
+        Use the Holloway et al 99 version of the eqn's
+        """
+        dN2_dz = grad_z(self.N2, self.Z, axis=0)
+        
+        # Linear term
+        b = self.B[np.newaxis,:] * self.phi_1 * self.N2
+        
+        #alpha = self.r10/(2*self.c1) ??
+        #alpha = -2*self.c1*self.r10
+        alpha = self.Alpha
+        
+        # nonlinear terms
+        if nonlinear:
+            b -= alpha/(2*self.c1)*self.B[np.newaxis,:]*self.phi_1*self.N2
+            b -= 0.5*dN2_dz*self.B[np.newaxis,:]**2. * self.phi_1**2.
+            # Cubic nonlinearity
+            #b += self.c1*self.B[:,np.newaxis]**2. *self.N2 * self.T10
+            
+        return b.T
+ 
+
     def calc_density(self, nonlinear=True, method='l96'):
         """
         Returns density
@@ -396,7 +430,7 @@ class vKdV(KdV):
             'h99' holloway 1999
             'l96' lamb 1996
         """
-        b = self.calc_buoyancy(nonlinear=nonlinear)
+        b = self.calc_buoyancy_h99(nonlinear=nonlinear)
         return RHO0*(b/GRAV) + self.rhoZ.T - RHO0
 
     def calc_velocity(self, nonlinear=True):

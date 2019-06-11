@@ -61,7 +61,8 @@ class KdVImEx(kdv.KdV):
         # Construct the RHS linear operator (matrix)
         #self.L_rhs, diags = self.build_linear_matrix()
         diags = self.build_linear_diags()
-        #self.insert_bcs(diags)
+
+        #self.insert_bcs_lhs(diags)
         self.L_rhs = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
 
 
@@ -79,13 +80,28 @@ class KdVImEx(kdv.KdV):
         status = 0
         self.t += self.dt_s
 
-        ### Construct the RHS vector
+        ### Add Dirichlet BCs into LHS terms
+        #self.B[0] = bc_left
+        #self.B[1] = 0.5*(bc_left + self.B[2]) # Linear interpolation
+        #self.B[-1] = bc_right
+        #self.B[-2] = 0.5*(bc_right+self.B[-3])
 
+        ### Construct the RHS vector
         # Implicit terms
         cff1 = 0.5*(1. - 2.*self.c_im)*self.dt_s
         cff2 = 0.5*self.c_im*self.dt_s
         RHS = cff1*self.L_rhs.dot(self.B) +\
                 cff2*self.L_rhs.dot(self.B_n_m1)
+
+        # Check the matrix looks ok...
+        #M = self.L_rhs
+        #print(M.todense()[0:6,0:6])
+        #print(self.B[0:6])
+        ##print(M.todense()[-6::,-6::])
+        ##print(self.B[-6::])
+        #pdb.set_trace()
+
+
 
         # Explicit terms (nonlinear terms)
         if self.nonlinear:
@@ -108,14 +124,11 @@ class KdVImEx(kdv.KdV):
 
 
         # Add the BCs to the RHS
-        self.add_bcs(RHS, 4*cff1, self.bcs[1]) #n
-        self.add_bcs(RHS, 4*cff2, self.bcs[2]) #n-1
+        self.add_bcs_rhs(RHS, 4*cff1, self.bcs[1]) #n
+        self.add_bcs_rhs(RHS, 4*cff2, self.bcs[2]) #n-1
         self.bcs[2] = self.bcs[1]
         self.bcs[1] = self.bcs[0]
         self.bcs[0]= bc_left
-
-        # Insert BCs
-        #RHS[0:3] = bc_left
 
         ##
         # Solve for B_n_p1
@@ -126,12 +139,11 @@ class KdVImEx(kdv.KdV):
         self.B_n_p1[:] = la.solve_banded( (2,2), self.L_lhs.data[::-1,:], RHS)
 
         ##
-        # Insert BCs
-        #self.B_n_p1[self.Nx-2] = bc_right
-        #self.B_n_p1[self.Nx-1] = bc_right
-
-        #self.B_n_p1[0:3] = bc_left
-
+        # Add Dirichlet BCs into LHS terms
+        self.B_n_p1[0] = bc_left
+        self.B_n_p1[1] = 0.5*(bc_left + self.B_n_p1[2]) # Linear interpolation
+        self.B_n_p1[-1] = bc_right
+        self.B_n_p1[-2] = 0.5*(bc_right+self.B_n_p1[-3])
 
         # Check solutions
         if np.any( np.isnan(self.B_n_p1)):
@@ -162,7 +174,7 @@ class KdVImEx(kdv.KdV):
         cff = self.dt_s*(1+self.c_im)*0.5        
         diags =  diags2 - cff*diags1
         
-        #self.insert_bcs(diags)
+        #self.insert_bcs_lhs(diags)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -196,12 +208,6 @@ class KdVImEx(kdv.KdV):
             cff = -self.k_chezy*self.c1 / self.H**2.
             diags[2,:] += cff * np.abs(An)
         
-        # RHS sponge term
-        if self.spongedist>0:
-            rdist = self.x[-1] - self.x
-            spongefac = -np.exp(-6*rdist/self.spongedist)/self.spongetime
-            diags[2,:] += spongefac 
-
         return diags
 
     def build_nonlinear_matrix(self, An):
@@ -274,6 +280,12 @@ class KdVImEx(kdv.KdV):
 
         # Build the sparse matrix
         #M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
+
+        # LHS sponge term
+        if self.spongedist>0:
+            rdist = self.x[-1] - self.x
+            spongefac = -np.exp(-6*rdist/self.spongedist)/self.spongetime
+            diags[2,:] += spongefac 
 
         return diags
 

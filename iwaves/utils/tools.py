@@ -39,4 +39,14 @@ def grad_z(y, z, axis=0):
 
     return dy_dz.swapaxes(axis, 0)
 
+def quadinterp(x, x0, x1, x2, y0, y1, y2):
+    """
+    Quadratic interpolation
+    """
+    L0 = (x-x1)*(x-x2) / ( (x0-x1)*(x0-x2) )
+    L1 = (x-x0)*(x-x2) / ( (x1-x0)*(x1-x2) )
+    L2 = (x-x0)*(x-x1) / ( (x2-x0)*(x2-x1) )
+
+    return y0*L0 + y1*L1 + y2*L2
+
 

@@ -11,7 +11,7 @@ import xarray as xray
 import matplotlib.pyplot as plt
 
 from iwaves.utils.isw import *
-from iwaves.utils.tools import grad_z
+from iwaves.utils.tools import grad_z, quadinterp
 
 import pdb 
 
@@ -222,21 +222,45 @@ class KdV(object):
 
         M = self.build_matrix_sparse(self.B)
 
+        ## Add Dirichlet BCs into LHS terms
+        #self.B[0] = bc_left
+        ##self.B[1] = bc_left # no interpolation
+        #self.B[1] = 0.5*(bc_left + self.B[2]) # Linear interpolation
+        ##dx = self.dx_s
+        ##self.B[1] = quadinterp(dx,0,2*dx,3*dx,bc_left,self.B[2],self.B[3])
+        #self.B[-1] = bc_right
+        #self.B[-2] = 0.5*(bc_right+self.B[-3])
+
         # Solve the next step
 
+        # Check the matrix looks ok...
+        #print(M.todense()[0:6,0:6])
+        #print(self.B[0:6])
+        #print(M.todense()[-6::,-6::])
+        #print(self.B[-6::])
+        #pdb.set_trace()
 
+        
+        
         # Compute RHS w/ explicit centered difference (in time) method
         cff = 2*self.dt_s
+
+        # Update BCs first
+        self.bcs[0]= bc_left
+        self.add_bcs_rhs(self.B, cff, self.bcs[0])
+        self.bcs[2] = self.bcs[1]
+        self.bcs[1] = self.bcs[0]
+
         RHS = M.dot(self.B)
 
         # Second-order time stepping
         self.B_n_p1[:] = self.B_n_m1 + cff*RHS
 
-        # Add Dirichlet BCs into RHS
-        self.add_bcs(self.B_n_p1, cff, self.bcs[0])
-        self.bcs[2] = self.bcs[1]
-        self.bcs[1] = self.bcs[0]
-        self.bcs[0]= bc_left
+        ## Add Dirichlet BCs into RHS
+        #self.bcs[0]= bc_left
+        #self.add_bcs_rhs(self.B_n_p1, cff, self.bcs[0])
+        #self.bcs[2] = self.bcs[1]
+        #self.bcs[1] = self.bcs[0]
 
 
         # First-order time stepping
@@ -249,6 +273,8 @@ class KdV(object):
         # Ensure the boundaries match the interior values i.e. dB/dx = 0 at BCs
         #self.B_n_p1[0] = self.B_n_p1[1]
         #self.B_n_p1[-1] = self.B_n_p1[-2]
+
+
 
         # Update the terms last
         self.B_n_m2[:] = self.B_n_m1
@@ -308,11 +334,16 @@ class KdV(object):
         # Dispersion term (2nd order)
         if self.nonhydrostatic:
             ones = np.ones((self.Nx,))
-            #ones[0] = 0.
+            #ones[0:3] = 0.
             diags[0,:] += -0.5*cff1*dx3 * ones # i-2
             diags[1,:] += (+cff1*dx3) * ones # i-1
             diags[3,:] += (-cff1*dx3) * ones # i+1
             diags[4,:] += 0.5*cff1*dx3 * ones # i+2
+
+            #diags[0,3::] += -0.5*cff1*dx3 * ones[3::] # i-2
+            #diags[1,3::] += (+cff1*dx3) * ones[3::] # i-1
+            #diags[3,3::] += (-cff1*dx3) * ones[3::] # i+1
+            #diags[4,3::] += 0.5*cff1*dx3 * ones[3::] # i+2
 
         # Dispersion term (4th order)
         #diags[0,:] += -1/8.*cff1*dx3 * np.ones((self.Nx,))
@@ -331,17 +362,17 @@ class KdV(object):
         #diags[2,:] -= 2*(nu_H*dx2) * np.ones((self.Nx,))
         #diags[3,:] += nu_H*dx2* np.ones((self.Nx,))
 
-        # 4th order
-        c1 = -1/12.
-        c2 = 16/12.
-        c3 = -30/12.
-        c4 = 16/12.
-        c5 = -1/12.
-        diags[0,:] += c1*nu_H*dx2 * np.ones((self.Nx,))
-        diags[1,:] += c2*nu_H*dx2 * np.ones((self.Nx,))
-        diags[2,:] += c3*nu_H*dx2 * np.ones((self.Nx,))
-        diags[3,:] += c4*nu_H*dx2* np.ones((self.Nx,))
-        diags[4,:] += c5*nu_H*dx2 * np.ones((self.Nx,))
+        ## 4th order
+        #c1 = -1/12.
+        #c2 = 16/12.
+        #c3 = -30/12.
+        #c4 = 16/12.
+        #c5 = -1/12.
+        #diags[0,:] += c1*nu_H*dx2 * np.ones((self.Nx,))
+        #diags[1,:] += c2*nu_H*dx2 * np.ones((self.Nx,))
+        #diags[2,:] += c3*nu_H*dx2 * np.ones((self.Nx,))
+        #diags[3,:] += c4*nu_H*dx2* np.ones((self.Nx,))
+        #diags[4,:] += c5*nu_H*dx2 * np.ones((self.Nx,))
 
 
         #print diags.max(axis=1)
@@ -380,7 +411,13 @@ class KdV(object):
             #diags[1,1:] = diags[1,1:] - cff5*An2[0:-1] # i-1
             #diags[3,0:-1] = diags[3,0:-1] + cff5*An2[1:] # i+1
             
-        #self.insert_bcs(diags)
+        # LHS sponge term
+        if self.spongedist>0:
+            rdist = self.x[-1] - self.x
+            spongefac = -np.exp(-6*rdist/self.spongedist)/self.spongetime
+            diags[2,:] += spongefac 
+
+        #self.insert_bcs_lhs(diags)
 
         # Build the sparse matrix
         M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
@@ -391,7 +428,7 @@ class KdV(object):
         return M
     
         
-    def add_bcs(self, RHS, cff, A_l):
+    def add_bcs_rhs(self, RHS, cff, A_l):
         # Add boundary condition terms to the RHS
         r01 = self.r01
         c = self.c1
@@ -400,19 +437,35 @@ class KdV(object):
         dx3_i = 1./np.power(self.dx_s,3.)
 
         #A_ll = A_l-cff*c*(self.B_n_m1[1]-A_l)*dx_i
-        A_ll = A_l
+        # Use linear interpolation to guess the interior ghost point
+        A_1 = RHS[2]
+        A_0 = 0.5*(A_l + A_1)
+        # No interpolation
+        #pdb.set_trace()
+        #A_0 = A_l
+        # Quadratic interpolation
+        dx=self.dx_s
+        A_0 = quadinterp(dx,0,2*dx,3*dx,A_l,RHS[2],RHS[3])
+
         # Left Dirichlet (linear terms)
-        RHS[0] += cff*(c*A_l*dx_i)
+        RHS[0] += cff*(c*A_0*dx_i)
         if self.nonhydrostatic:
-            RHS[0] += +cff*r01*1.0*A_l*dx3_i
-            RHS[0] += -cff*r01*0.5*A_ll*dx3_i
-            RHS[1] += -cff*r01*0.5*A_l*dx3_i
+            RHS[0] += cff*r01*1.0*A_0*dx3_i
+            RHS[0] -= cff*r01*0.5*A_l*dx3_i
+            RHS[1] -= cff*r01*0.5*A_0*dx3_i
 
 
-    def insert_bcs(self, diags):
+    def insert_bcs_lhs(self, diags):
+        """
+        Modify the LHS matrix to include Dirichlet boundary types for the
+        first two and last two cells. These are treated as ghost cells and are updated
+        manually during time-stepping (solve_step).
+
+        The trick seems to be use interpolation to guess the interior ghost cell value.
+        Linear interpolation seems fine...
+        """
         # Set the boundary conditions for the diagonal array
         #[-2,-1,0,1,2]
-        
         
         # top row
         diags[3,1] = 0
@@ -421,13 +474,15 @@ class KdV(object):
         # second row
         diags[1,0] = 0
         diags[3,2] = 0
+        #diags[1,0] = -0.5*self.c1/self.dx_s
+        #diags[3,2] = 0.5*self.c1/self.dx_s
         diags[4,3] = 0
         
         # Third row
-        diags[0,0] = 0
-        diags[1,1] = 0
-        diags[3,3] = 0
-        diags[4,4] = 0
+        #diags[0,0] = 0
+        #diags[1,1] = -0.5*self.c1/self.dx_s
+        #diags[3,3] = 0.5*self.c1/self.dx_s
+        #diags[4,4] = 0
         
         Nx = self.Nx-1
         
@@ -440,11 +495,11 @@ class KdV(object):
         diags[0, Nx-3] = 0
         diags[3, Nx] = 0
 
-        ## top row
-        #diags[2,0] = 1
-        #diags[2,1] = 1
-        #diags[2,Nx] = 1
-        #diags[2,Nx-1] = 1
+        ## main diagonals
+        diags[2,0] = 1.
+        diags[2,1] = 1
+        diags[2,Nx] = 1
+        diags[2,Nx-1] = 1
 
         return
     
@@ -663,6 +718,7 @@ class KdV(object):
                 'epsilon',\
                 'r01',\
                 'r10',\
+                'spongedist',\
                 't',\
                 #'ekdv',
         ]
