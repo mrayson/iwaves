@@ -50,6 +50,7 @@ class vKdV(KdV):
     """
     Variable-coefficient (depth-dependent) KdV solver
     """
+    verbose = True
 
     def __init__(self, rhoz, z, h, x, mode,\
         Nsubset=1,\
@@ -68,6 +69,8 @@ class vKdV(KdV):
 	
         # Initialise properties
         # (This is ugly but **kwargs are reserved for the superclass)
+
+        self.__dict__.update(**kwargs)
 
         ekdv=False # Hard wire this for now 
 
@@ -145,7 +148,8 @@ class vKdV(KdV):
         Q = np.zeros((Nx,))
 
         # Loop through and compute the eigenfunctions etc at each point
-        print('Calculating eigenfunctions...')
+        if self.verbose:
+            print('Calculating eigenfunctions...')
         phi0, cn0 = isw.iwave_modes(self.N2[:,0], self.dZ[0])
         phi0 = phi0[:,self.mode]
         phi0 = phi0 / np.abs(phi0).max()
@@ -154,7 +158,8 @@ class vKdV(KdV):
         for ii in range(0, Nx, self.Nsubset):
             point = Nx//100
             if(ii % (5 * point) == 0):
-                print('%3.1f %% complete...'%(float(ii)/Nx*100))
+                if self.verbose:
+                    print('%3.1f %% complete...'%(float(ii)/Nx*100))
 
             #phi, cn = iwave_modes_sparse(N2[:,ii], dZ[ii], h[ii])
             #phi, cn = isw.iwave_modes(self.N2[:,ii], self.dZ[ii], h[ii])
@@ -289,11 +294,13 @@ class vKdV(KdV):
         phi01 = np.zeros((self.Nz, self.Nx))
         phi10 = np.zeros((self.Nz, self.Nx))
 
-        print('Calculating nonlinear structure functions...')
+        if self.verbose:
+            print('Calculating nonlinear structure functions...')
         for ii in range(0, self.Nx, self.Nsubset):
             point = self.Nx//100
             if(ii % (5 * point) == 0):
-                print('%3.1f %% complete...'%(float(ii)/self.Nx*100))
+                if self.verbose:
+                    print('%3.1f %% complete...'%(float(ii)/self.Nx*100))
 
             rhs01 = isw.calc_phi01_rhs(self.Phi[:,ii], \
                 self.c1[ii], self.N2[:,ii], self.dZ[ii])
@@ -330,7 +337,8 @@ class vKdV(KdV):
         D01 = np.zeros((self.Nz, self.Nx))
         D10 = np.zeros((self.Nz, self.Nx))
 
-        print('Calculating buoyancy coefficients...')
+        if self.verbose:
+            print('Calculating buoyancy coefficients...')
         for ii in range(0,self.Nx, self.Nsubset):
             D01[:,ii] = isw.calc_D01(self.Phi[:,ii], self.c1[ii],\
                 self.N2[:,ii], self.dZ[ii])

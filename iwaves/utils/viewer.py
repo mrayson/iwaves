@@ -31,10 +31,10 @@ import pdb
 class viewer(object):
     
     tstep = 0
-    hscale = 0.5
+    hscale = 0.2
     uscale = 2.
     ulim = None
-    xaxis = 'time'
+    xaxis = 'distance'
     cmap = 'RdBu'
     rholevs = np.arange(20,30,0.25)
 
@@ -250,8 +250,9 @@ if __name__=='__main__':
     
 
     ncfile = sys.argv[1]
+    isvkdv = np.bool(sys.argv[2])
     print(ncfile)
-    viewer(ncfile)
+    viewer(ncfile, isvkdv=isvkdv)
         
 
 

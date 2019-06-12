@@ -63,7 +63,7 @@ def from_netcdf(kdvfile):
 
     
 
-def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None):
+def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None, mode=None):
     """
     Wrapper to load an object directly from a pre-saved file
     """
@@ -77,20 +77,23 @@ def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None):
         args = {}
     else:
         args = {'wavefunc':wavefunc}
+    
+    if mode is None:
+        args.update({'mode':0})
 
     mykdv = vKdV(
         ds.rhoZ.values[:,0],
         ds.Z.values[:,0],
         ds.h.values,
         x=ds.x.values,\
-        mode=ds.mode,\
+        #mode=ds.mode,\
         a0=a0,\
-        Lw=ds.Lw,\
+        #Lw=ds.Lw,\
         x0=0,\
-        nu_H=ds.nu_H,\
-        spongedist=ds.spongedist,\
-        Cmax=ds.Cmax,\
-        dt=ds.dt_s,
+        #nu_H=ds.nu_H,\
+        #spongedist=ds.spongedist,\
+        #Cmax=ds.Cmax,\
+        #dt=ds.dt_s,
         Cn=ds.Cn.values,
         Phi=ds.Phi.values,
         Alpha=ds.Alpha.values,
