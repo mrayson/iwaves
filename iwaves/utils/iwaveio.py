@@ -4,6 +4,8 @@
 import xarray as xray
 from iwaves.kdv.kdv import KdV
 from iwaves.kdv.vkdv import vKdV
+import numpy as np
+
 
 def from_netcdf(kdvfile):
     """
@@ -81,6 +83,19 @@ def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None, mode=None):
     if mode is None:
         args.update({'mode':0})
 
+    # Need this for backward compatability...
+    if hasattr(ds,'r20'):
+        r20 = ds.r20.values
+        D20 = ds.D20.values
+        phi20 = ds.phi20.values
+        ekdv = ds.ekdv
+    else:
+        r20 = np.zeros_like(ds.x.values)
+        ekdv = False
+        D20 = np.zeros_like(ds.D10)
+        phi20 = np.zeros_like(ds.D10)
+
+
     mykdv = vKdV(
         ds.rhoZ.values[:,0],
         ds.Z.values[:,0],
@@ -90,6 +105,7 @@ def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None, mode=None):
         a0=a0,\
         #Lw=ds.Lw,\
         x0=0,\
+        ekdv=ekdv,
         #nu_H=ds.nu_H,\
         #spongedist=ds.spongedist,\
         #Cmax=ds.Cmax,\
@@ -103,6 +119,9 @@ def vkdv_from_netcdf(ncfile, a0=None, wavefunc=None, mode=None):
         phi10=ds.phi10.values,
         D01=ds.D01.values,
         D10=ds.D10.values,
+        phi20=phi20,
+        D20=D20,
+        r20=r20,
         **args
     )
 

@@ -63,8 +63,11 @@ class vKdV(KdV):
         Qterm=None,
         phi01=None,
         phi10=None,
+        phi20=None,
         D01=None,
         D10=None,
+        D20=None,
+        r20=None,
         wavefunc=isw.sine, **kwargs):
 	
         # Initialise properties
@@ -72,7 +75,7 @@ class vKdV(KdV):
 
         self.__dict__.update(**kwargs)
 
-        ekdv=False # Hard wire this for now 
+        #ekdv=False # Hard wire this for now 
 
         self.mode = mode
         self.x = x
@@ -89,8 +92,12 @@ class vKdV(KdV):
         self.Qterm = Qterm
         self.phi01 = phi01
         self.phi10 = phi10
+        self.phi20 = phi20
         self.D01 = D01
         self.D10 = D10
+        self.D20 = D20
+        self.r20 = r20
+        self.r20 = r20
 
         Nz = z.shape[0]
         Nx = x.shape[0]
@@ -116,12 +123,12 @@ class vKdV(KdV):
         # Only calculate the parameters if they aren't specified
         self.N2 = self.calc_N2()
         if self.Phi is None:
-            self.Phi, self.Cn, self.Alpha, self.Beta, self.Qterm =\
+            self.Phi, self.Cn, self.Alpha, self.Beta, self.Qterm, self.r20 =\
                 self.calc_vkdv_params(Nz, Nx)
 
         # Now initialise the class
         KdV.__init__(self, rhoz, z, wavefunc=wavefunc, x=x, mode=mode, \
-            ekdv=ekdv, **kwargs)
+            **kwargs)
 
         self.c1 = self.Cn
 
@@ -132,8 +139,8 @@ class vKdV(KdV):
         # 
         self.dt_s = np.min(self.dt_s)
 
-        if self.ekdv:
-            raise Exception('Extended-KdV not currently supported for spatially-varying model.')
+        #if self.ekdv:
+        #    raise Exception('Extended-KdV not currently supported for spatially-varying model.')
 
     def calc_N2(self):
         drho_dz = grad_z(self.rhoZ, self.Z,  axis=0)
@@ -146,6 +153,7 @@ class vKdV(KdV):
         Alpha = np.zeros((Nx,))
         Beta = np.zeros((Nx,))
         Q = np.zeros((Nx,))
+        r20 = np.zeros((Nx,))
 
         # Loop through and compute the eigenfunctions etc at each point
         if self.verbose:
@@ -182,6 +190,10 @@ class vKdV(KdV):
             Cn[ii] = c1
             Phi[:,ii] = phi_1
 
+            if self.ekdv:
+                # Compute cubic nonlinearity on the subsetted grid then interpolate
+                r20[ii] = isw.calc_r20(phi_1, c1, self.N2[:,ii], self.dZ[ii])
+
 
         # Interpolate all of the variables back onto the regular grid
         x = self.x
@@ -192,6 +204,11 @@ class vKdV(KdV):
 
         F = interp1d(x[idx],Phi[:,idx], kind=interpm, axis=1, fill_value='extrapolate')
         Phi = F(x)
+
+        if self.ekdv:
+            F = interp1d(x[idx],r20[idx], kind=interpm, fill_value='extrapolate')
+            r20 = F(x)
+
 
         for ii in range(self.Nx):
             phi_1 = Phi[:,ii]
@@ -211,7 +228,7 @@ class vKdV(KdV):
         #Q_x = np.gradient(Q, self.dx)
         #Qterm = Cn/(2.*Q) * Q_x
 
-        return Phi, Cn ,Alpha, Beta, Q
+        return Phi, Cn ,Alpha, Beta, Q, r20
 
 
     def build_linear_diags(self):
@@ -289,10 +306,11 @@ class vKdV(KdV):
         # Structure function for higher powers of epsilon & mu
 
         if self.phi01 is not None and self.phi10 is not None:
-             return self.phi01, self.phi10, None
+             return self.phi01, self.phi10, self.phi20
 
         phi01 = np.zeros((self.Nz, self.Nx))
         phi10 = np.zeros((self.Nz, self.Nx))
+        phi20 = np.zeros((self.Nz, self.Nx))
 
         if self.verbose:
             print('Calculating nonlinear structure functions...')
@@ -311,6 +329,14 @@ class vKdV(KdV):
             phi10[:,ii] = isw.solve_phi_bvp(rhs10, \
                 self.N2[:,ii], self.c1[ii], self.dZ[ii])
 
+            if self.ekdv:
+                rhs20 = isw.calc_phi20_rhs(self.Phi[:,ii],\
+                    self.c1[ii], self.N2[:,ii], self.dZ[ii])
+                phi20[:,ii] = isw.solve_phi_bvp(rhs20, \
+                    self.N2[:,ii], self.c1[ii], self.dZ[ii])
+
+
+
             # Interpolate all of the variables back onto the regular grid
             idx = list(range(0,self.Nx,self.Nsubset))
             interpm = 'cubic'
@@ -323,19 +349,24 @@ class vKdV(KdV):
                     axis=1, fill_value='extrapolate')
             phi10 = F(self.X[0,:])
 
+            if self.ekdv:
+                F = interp1d(self.X[0,idx], phi20[:,idx], kind=interpm,\
+                        axis=1, fill_value='extrapolate')
+                phi20 = F(self.X[0,:])
 
-        return phi01, phi10, None
+        return phi01, phi10, phi20
 
     def calc_coeffs(self):
-    	return -self.Beta, self.Alpha/(-2*self.Cn), None, None
+    	return -self.Beta, self.Alpha/(-2*self.Cn), self.r20, None
 
     def calc_buoyancy_coeffs(self):
 
         if self.D01 is not None and self.D10 is not None:
-            return self.D01, self.D10, None
+            return self.D01, self.D10, self.D20
 
         D01 = np.zeros((self.Nz, self.Nx))
         D10 = np.zeros((self.Nz, self.Nx))
+        D20 = np.zeros((self.Nz, self.Nx))
 
         if self.verbose:
             print('Calculating buoyancy coefficients...')
@@ -344,6 +375,9 @@ class vKdV(KdV):
                 self.N2[:,ii], self.dZ[ii])
             D10[:,ii] = isw.calc_D10(self.Phi[:,ii], self.c1[ii],\
                 self.N2[:,ii], self.dZ[ii])
+            if self.ekdv:
+                D20[:,ii] = isw.calc_D20(self.Phi[:,ii], self.c1[ii],\
+                    self.N2[:,ii], self.dZ[ii])
 
         # Interpolate all of the variables back onto the regular grid
         idx = list(range(0,self.Nx,self.Nsubset))
@@ -357,7 +391,14 @@ class vKdV(KdV):
                 axis=1, fill_value='extrapolate')
         D10 = F(self.X[0,:])
 
-        return D01, D10, None
+        if self.ekdv:
+            F = interp1d(self.X[0,idx], D20[:,idx], kind=interpm,\
+                    axis=1, fill_value='extrapolate')
+            D20 = F(self.X[0,:])
+
+
+
+        return D01, D10, D20
 
     def calc_streamfunction(self, nonlinear=True):
         """
@@ -377,8 +418,10 @@ class vKdV(KdV):
         if nonlinear:
             psi += B[np.newaxis,:]**2. * self.phi10 * self.c1**2.
             psi += B_xx[np.newaxis,:] * self.phi01 * self.c1
-        
-            
+
+            if self.ekdv:
+                psi += self.epsilon * B[np.newaxis,...]**3. * self.phi20 * self.c1**3.
+
         return psi
 
     def calc_buoyancy_l96(self, nonlinear=True):
@@ -391,11 +434,11 @@ class vKdV(KdV):
         # Use the dimensional N2
         N2 = self.N2
         
-        A = B #* self.c1
-        A_xx = B_xx #* self.c1
+        A = B * self.c1
+        A_xx = B_xx * self.c1
         
         # Linear component
-        b = A[np.newaxis,:]*self.phi_1*N2#/self.c1[np.newaxis,:]
+        b = A[np.newaxis,:]*self.phi_1*N2/self.c1[np.newaxis,:]
         
         ## Nonlinear components
         if nonlinear:
@@ -404,6 +447,9 @@ class vKdV(KdV):
         
             #D01 = calc_D01(self.phi_1, self.c1, self.N2, self.dz_s)
             b += self.mu*A_xx[np.newaxis,:]*self.D01
+
+            if self.ekdv:
+                b += self.epsilon*A[np.newaxis,...]**3.*self.D20
         
         return b.T # Need to return the dimensions
 
@@ -438,7 +484,7 @@ class vKdV(KdV):
             'h99' holloway 1999
             'l96' lamb 1996
         """
-        b = self.calc_buoyancy_h99(nonlinear=nonlinear)
+        b = self.calc_buoyancy_l96(nonlinear=nonlinear)
         return RHO0*(b/GRAV) + self.rhoZ.T - RHO0
 
     def calc_velocity(self, nonlinear=True):
@@ -491,6 +537,17 @@ class vKdV(KdV):
             coords = coords,\
             attrs = attrs,\
         )
+
+        attrs = {'long_name':'Cubic Nonlinearity',\
+                'units':'m-3 s'}
+                
+        r20 = xray.DataArray(self.r20,
+            dims = dims,\
+            coords = coords,\
+            attrs = attrs,\
+        )
+
+
 
         attrs = {'long_name':'Dispersion',\
                 'units':'m-1'}
@@ -583,6 +640,12 @@ class vKdV(KdV):
             attrs = attrs,\
         )
 
+        phi20 = xray.DataArray(self.phi20,
+            dims = dims,\
+            coords = coords,\
+            attrs = attrs,\
+        )
+
         D01 = xray.DataArray(self.D01,
             dims = dims,\
             coords = coords,\
@@ -594,6 +657,14 @@ class vKdV(KdV):
             coords = coords,\
             attrs = attrs,\
         )
+
+        D20 = xray.DataArray(self.D20,
+            dims = dims,\
+            coords = coords,\
+            attrs = attrs,\
+        )
+
+
 
         #########
         # Dictionary of attributes
@@ -616,12 +687,18 @@ class vKdV(KdV):
                 #'r01',\
                 #'r10',\
                 't',\
-                #'ekdv',
+                'ekdv',\
+                'nonlinear',\
+                'nonhydrostatic',\
         ]
 
         attrs = {}
         for aa in saveattrs:
-            attrs.update({aa:getattr(self, aa)})
+            myatt = getattr(self,aa)
+            if isinstance(myatt,bool):
+                attrs.update({aa: int(myatt)})
+            else:
+                attrs.update({aa:myatt})
 
         attrs.update({'Description':'1D variable-coefficient KdV Solution'})
 
@@ -629,6 +706,7 @@ class vKdV(KdV):
                         'Alpha':Alpha,\
                         'Beta':Beta,\
                         'Qterm':Qterm,\
+                        'r20':r20,\
                         'h':h,\
                         'Cn':Cn,\
                         'X':X,\
@@ -637,8 +715,10 @@ class vKdV(KdV):
                         'Phi':Phi,\
                         'phi01':phi01,\
                         'phi10':phi10,\
+                        'phi20':phi20,\
                         'D01':D01,\
                         'D10':D10,\
+                        'D20':D20,\
                         #'rhoz':rhoz,\
                         }, attrs=attrs)
 

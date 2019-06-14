@@ -295,7 +295,6 @@ def calc_S20(phi, c, N2, dz):
         - r_10*N2/c**4 * phi * phi_z \
         -8/3. * r_10 * N2/c**3 * phi10 \
         -4*r_10**2*N2/c**4 * phi
-        #- r_10*N2/c**4 * phi * phi_z \ # Note sure about this term???
 
     return S20#/N2
 
