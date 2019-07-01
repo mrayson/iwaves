@@ -6,6 +6,8 @@ from iwaves.kdv.kdv import KdV
 from iwaves.kdv.vkdv import vKdV
 import numpy as np
 
+import pdb
+
 
 def from_netcdf(kdvfile):
     """
