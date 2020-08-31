@@ -502,6 +502,22 @@ class vKdV(KdV):
         w = -1* grad_z(psi, self.X, axis=1)
         return u.T, w.T
  
+    #####
+    # Printing routines
+    def print_params(self):
+        """
+        Print parameters of interests. 
+        """
+
+        printstr = 'Parameters (min/max):\n c1 = (%3.6f, %3.6f)\n'% (min(self.c1), max(self.c1))
+        printstr += ' epsilon = %3.6f\n'% (self.epsilon)
+        printstr += ' mu = %3.6f\n'% (self.mu)
+        printstr += ' r01 = (%3.6f, %3.6f)\n'% (min(self.r01), max(self.r01))
+        printstr += ' r10 = (%3.6f, %3.6f)\n'% (min(self.r10), max(self.r10))
+        printstr += ' r20 = (%3.6f, %3.6f)\n'% (min(self.r20), max(self.r20))
+
+        print(printstr)
+
     def to_Dataset(self):
         """
         Convert to an xray dataset object
