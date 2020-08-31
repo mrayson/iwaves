@@ -212,11 +212,12 @@ class vKdV(KdV):
 
         for ii in range(self.Nx):
             phi_1 = Phi[:,ii]
+            c1 = Cn[:,ii]
             Alpha[ii] = calc_alpha(phi_1, c1, self.dZ[ii])
             Beta[ii] = calc_beta(phi_1, c1, self.dZ[ii])
             #Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
             Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
-                Cn[ii], Cn[0], self.dZ[ii], self.dZ[0])
+                c1, Cn[0], self.dZ[ii], self.dZ[0])
 
         # Zero beta near the boundary
 
