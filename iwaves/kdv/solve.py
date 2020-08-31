@@ -55,7 +55,7 @@ def solve_kdv(rho, z, runtime,\
         # Log output
         point = nsteps/100.
         if verbose:
-            if(ii % (5 * point) == 0):
+            if(ii % (mykdv.print_freq * point) == 0):
                  print('%3.1f %% complete...'%(float(ii)/nsteps*100))
 
         if mykdv.solve_step(bc_left=bcfunc(mykdv.t)) != 0:
