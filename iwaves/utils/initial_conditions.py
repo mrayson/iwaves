@@ -1,9 +1,14 @@
+from iwaves.utils import isw 
+from iwaves.utils.tools import grad_z
 
 import numpy as np
 from scipy import linalg, sparse
 from scipy.interpolate import interp1d
 from scipy.integrate import solve_bvp
 from scipy.optimize import least_squares, leastsq
+
+GRAV = 9.81
+RHO0=1000.
 
 #########################
 ## Initial wave amplitude
@@ -79,3 +84,39 @@ def depth_tanh2(beta, x):
     h = depth_tanh(x_shelf, L_shelf, h0, h_shelf, x)
     
     return h
+
+#########################
+## Misc functions
+
+def get_Lw(rho, z, z0=None, Nz=400, mode=1, omega=2*np.pi/(12.42*3600)):
+    """
+    A function to calculate the wavelength of a specific vertical mode for a specific frequency given stratification conditions.
+
+    z0 is the final depth. Will interpolate there if necessary.
+
+    """
+
+    if z0 is None:
+        z0 = max(z)
+
+    Z = -np.linspace(0,1,Nz)*z0
+
+    dZ = np.abs(Z[1]-Z[0])
+
+    # Interpolate the density profile onto all points
+    Fi = interp1d(z, rho, axis=0, fill_value='extrapolate')
+    rhoZ = Fi(Z)
+        
+    drho_dz = grad_z(rhoZ, Z,  axis=0)
+    N2 = -GRAV*drho_dz/RHO0    
+
+    phi, c = isw.iwave_modes(N2, dZ)
+
+    phi_n = phi[:, mode]
+    c_n = c[mode]
+
+    k = omega/c_n
+    
+    Lw = 2*np.pi/k
+
+    return Lw
