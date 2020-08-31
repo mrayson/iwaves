@@ -94,7 +94,9 @@ def solve_kdv(rho, z, runtime,\
             coords = coords,\
             attrs = attrs,\
         )
-    ds.merge( xray.Dataset({'B_t':Bda}), inplace=True )
+
+    # ds.merge( xray.Dataset({'B_t':Bda}), inplace=True )
+    ds['B_t'] = Bda
 
     #if output_us:
     #    Uda = xray.DataArray(us,
@@ -110,6 +112,7 @@ def solve_kdv(rho, z, runtime,\
     #    ds.merge( xray.Dataset({'B_t':Bda}), inplace=True )
 
     if outfile is not None:
+        print(outfile)
         ds.to_netcdf(outfile)
 
     if myfunc is None:
