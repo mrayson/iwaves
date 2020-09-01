@@ -57,7 +57,7 @@ def rho_double_tanh_rayson(beta, z):
 
 #########################
 ## Bathy functions
-def depth_tanh(x_shelf, L_shelf, h0, h_shelf, x):
+def depth_tanh(x, x_shelf, L_shelf, h0, h_shelf):
     """
     
     """
