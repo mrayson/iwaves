@@ -90,3 +90,5 @@ def vKdV_plot(my_vkdv):
 
     # f.savefig(out_dir + '/Environment.png')
     # plt.show()
+
+    return f
