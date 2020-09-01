@@ -81,7 +81,7 @@ def depth_tanh2(beta, x):
     Get depth using a hyperbolic tan function.
     """
     
-    h = depth_tanh(x_shelf, L_shelf, h0, h_shelf, x)
+    h = depth_tanh( x, x_shelf, L_shelf, h0, h_shelf)
     
     return h
 
