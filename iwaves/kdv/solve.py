@@ -6,6 +6,7 @@ from .kdvdamped import KdVDamp
 from .kdvimex import KdVImEx
 from .kdv import KdV
 from .vkdv import vKdV
+import iwaves.utils.boundary_conditions as bcs
 
 import numpy as np
 import xarray as xray
@@ -21,6 +22,7 @@ def solve_kdv(rho, z, runtime,\
         ntout=None, outfile=None,\
         myfunc=None,
         bcfunc=zerobc,
+        a_bc_left=0,
         verbose=True, **kwargs):
     """
     function for generating different soliton scenarios
@@ -58,7 +60,7 @@ def solve_kdv(rho, z, runtime,\
             if(ii % (mykdv.print_freq * point) == 0):
                  print('%3.1f %% complete...'%(float(ii)/nsteps*100))
 
-        if mykdv.solve_step(bc_left=bcfunc(mykdv.t)) != 0:
+        if mykdv.solve_step(bc_left=bcs.rampedsine_bc(mykdv.t, a_bc_left)) != 0:
             print('Blowing up at step: %d'%ii)
             break
         
