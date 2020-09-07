@@ -12,7 +12,7 @@ def vKdV_plot(my_vkdv):
     D = np.min(my_vkdv.Z)
 
     ninx = 30
-    nrows = 9
+    nrows = 10
 
     f = plt.figure(figsize=(10, 14))
 
@@ -107,6 +107,15 @@ def vKdV_plot(my_vkdv):
     plt.xlim(0, L)
     # plt.ylabel(r'$\frac{1}{2Q}\frac{\partial Q}{\partial x}$', fontsize=15)
     plt.ylabel(r'$\frac{c(x)}{2Q(x)}.\frac{dQ(x)}{dx} (s^{-1})$', fontsize=15)
+    hide_ticks(ax)
+
+    rdist = my_vkdv.x[-1] - my_vkdv.x
+    spongefac = -np.exp(-6*rdist/my_vkdv.spongedist)/my_vkdv.spongetime
+    ax = plt.subplot2grid((nrows, ninx), (9, 0), colspan=ninx-2)
+    plt.plot(my_vkdv.x, spongefac, 'k')
+    plt.xlim(0, L)
+    # plt.ylabel(r'$\frac{1}{2Q}\frac{\partial Q}{\partial x}$', fontsize=15)
+    plt.ylabel(r'$r ()$', fontsize=15)
     plt.xlabel('x (m)')
 
     # f.savefig(out_dir + '/Environment.png')
