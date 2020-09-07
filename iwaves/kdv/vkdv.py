@@ -5,6 +5,7 @@ Variable coefficient code
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy import sparse 
+import scipy.signal
 
 from .kdvimex import  KdVImEx as KdV
 from iwaves.utils import isw 
@@ -68,7 +69,9 @@ class vKdV(KdV):
         D10=None,
         D20=None,
         r20=None,
-        wavefunc=isw.sine, **kwargs):
+        wavefunc=isw.sine, 
+        Wn=None,
+        **kwargs):
 	
         # Initialise properties
         # (This is ugly but **kwargs are reserved for the superclass)
@@ -98,6 +101,7 @@ class vKdV(KdV):
         self.D20 = D20
         self.r20 = r20
         self.r20 = r20
+        self.Wn = Wn
 
         Nz = z.shape[0]
         Nx = x.shape[0]
@@ -219,6 +223,13 @@ class vKdV(KdV):
             #Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
             Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
                 c1, Cn[0], self.dZ[ii], self.dZ[0])
+
+        # Playing with filtering here. Q seems to really need it given the tiple derivative.
+        if not self.Wn is None:
+            b, a = scipy.signal.butter(4, self.Wn)
+            Q = scipy.signal.filtfilt(b, a, Q)
+
+            pass
 
         # Zero beta near the boundary
 
