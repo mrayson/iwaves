@@ -12,9 +12,9 @@ def vKdV_plot(my_vkdv):
     D = np.min(my_vkdv.Z)
 
     ninx = 30
-    nrows = 7
+    nrows = 9
 
-    f = plt.figure(figsize=(10, 10))
+    f = plt.figure(figsize=(10, 14))
 
     ax = plt.subplot2grid((nrows, ninx), (0, 0), colspan=ninx-2)
 
@@ -78,14 +78,35 @@ def vKdV_plot(my_vkdv):
     ax = plt.subplot2grid((nrows, ninx), (5, 0), colspan=ninx-2)
     plt.plot(my_vkdv.x, my_vkdv.c1, 'k')
     plt.xlim(0, L)
-    plt.ylabel(r'c (ms^{-1})')
+    plt.ylabel(r'$c (ms^{-1})$')
     hide_ticks(ax)
 
+    ######
+    ## SIC
+    # The confusing use of Q term vs. Q here is noted
+    Q = my_vkdv.Qterm
+    Q_x = np.gradient(my_vkdv.Qterm, my_vkdv.dx_s)
+    Qterm = my_vkdv.Cn/(2.*my_vkdv.Qterm) * Q_x
+
     ax = plt.subplot2grid((nrows, ninx), (6, 0), colspan=ninx-2)
-    plt.plot(my_vkdv.x, my_vkdv.Qterm, 'k')
+    plt.plot(my_vkdv.x, Q, 'k')
     plt.xlim(0, L)
     # plt.ylabel(r'$\frac{1}{2Q}\frac{\partial Q}{\partial x}$', fontsize=15)
-    plt.ylabel(r'$Q$', fontsize=15)
+    plt.ylabel(r'$Q(x)$', fontsize=15)
+    hide_ticks(ax)
+
+    ax = plt.subplot2grid((nrows, ninx), (7, 0), colspan=ninx-2)
+    plt.plot(my_vkdv.x, 1/np.sqrt(Q), 'k')
+    plt.xlim(0, L)
+    # plt.ylabel(r'$\frac{1}{2Q}\frac{\partial Q}{\partial x}$', fontsize=15)
+    plt.ylabel(r'$1/\sqrt{Q(x)}$', fontsize=15)
+    hide_ticks(ax)
+
+    ax = plt.subplot2grid((nrows, ninx), (8, 0), colspan=ninx-2)
+    plt.plot(my_vkdv.x, Qterm, 'k')
+    plt.xlim(0, L)
+    # plt.ylabel(r'$\frac{1}{2Q}\frac{\partial Q}{\partial x}$', fontsize=15)
+    plt.ylabel(r'$\frac{c(x)}{2Q(x)}.\frac{dQ(x)}{dx} (s^{-1})$', fontsize=15)
     plt.xlabel('x (m)')
 
     # f.savefig(out_dir + '/Environment.png')
