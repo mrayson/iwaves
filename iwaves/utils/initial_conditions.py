@@ -12,7 +12,13 @@ RHO0=1000.
 
 #########################
 ## Initial wave amplitude
-def eta_gaussian(x, a_0, L_w):
+def eta_zero(x, a_0, L_w, x0=0.):
+
+    eta = 0*x
+
+    return eta
+
+def eta_gaussian(x, a_0, L_w, x0=0.):
 
     sigma = L_w/4
     eta = -a_0 * np.exp( - (x/sigma)**2. )
