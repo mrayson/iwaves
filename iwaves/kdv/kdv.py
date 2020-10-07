@@ -70,7 +70,8 @@ class KdV(object):
     
     # Bottom friction coefficient
     k_chezy = 0.0
-
+    drag_param = 0.0 
+    
     # Sponge layer for RHS
     spongedist = 0.
     spongetime = 300.
@@ -87,7 +88,9 @@ class KdV(object):
 
     bcs = [0,0,0] # n+1, n, n-1
     
-    
+    verbose = False
+    print_freq = 5 # % of loops to print on. Reduces output.
+
     def __init__(self, rhoz, z, wavefunc=sine, **kwargs):
         """
         Numerical KdV solution

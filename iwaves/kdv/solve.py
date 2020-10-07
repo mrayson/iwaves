@@ -6,6 +6,7 @@ from .kdvdamped import KdVDamp
 from .kdvimex import KdVImEx
 from .kdv import KdV
 from .vkdv import vKdV
+import iwaves.utils.boundary_conditions as bcs
 
 import numpy as np
 import xarray as xray
@@ -18,9 +19,10 @@ def solve_kdv(rho, z, runtime,\
         x=None,
         h=None,
         mode=0,
-        ntout=None, outfile=None,\
+        ntout=None, outfile=None, full_output=False,\
         myfunc=None,
         bcfunc=zerobc,
+        a_bc_left=0,
         verbose=True, **kwargs):
     """
     function for generating different soliton scenarios
@@ -46,6 +48,8 @@ def solve_kdv(rho, z, runtime,\
     nout = int(runtime//ntout)
     B = np.zeros((nout, mykdv.Nx))
     tout = np.zeros((nout,))
+    if full_output:
+        density = np.zeros((nout, mykdv.Nx, mykdv.Nz))
     output = []
 
     ## Run the model
@@ -55,10 +59,10 @@ def solve_kdv(rho, z, runtime,\
         # Log output
         point = nsteps/100.
         if verbose:
-            if(ii % (5 * point) == 0):
+            if(ii % (mykdv.print_freq * point) == 0):
                  print('%3.1f %% complete...'%(float(ii)/nsteps*100))
 
-        if mykdv.solve_step(bc_left=bcfunc(mykdv.t)) != 0:
+        if mykdv.solve_step(bc_left=bcs.rampedsine_bc(mykdv.t, a_bc_left)) != 0:
             print('Blowing up at step: %d'%ii)
             break
         
@@ -74,9 +78,9 @@ def solve_kdv(rho, z, runtime,\
 
             # Calculate the velocity
             # No point outputting this as can be calculated on the fly
-            #if full_output:
+            if full_output:
             #    u,w = mykdv.calc_velocity(nonlinear=True)
-            #    density = mykdv.calc_density(nonlinear=True)
+               density[nn, :, :] = mykdv.calc_density(nonlinear=True)
 
             nn+=1
 
@@ -94,7 +98,37 @@ def solve_kdv(rho, z, runtime,\
             coords = coords,\
             attrs = attrs,\
         )
-    ds.merge( xray.Dataset({'B_t':Bda}), inplace=True )
+
+    coords = {'x':mykdv.x, 'z': np.arange(0, mykdv.Nz)}
+    attrs = {'long_name':'Z',\
+            'units':'m'}
+    dims = ('x','z')
+    Zda = xray.DataArray(mykdv.Z.T,
+            dims = dims,\
+            coords = coords,\
+            attrs = attrs,\
+        )
+
+    # ds.merge( xray.Dataset({'B_t':Bda}), inplace=True )
+    ds['B_t'] = Bda
+    # ds['Z'] = Zd a
+
+    if full_output:
+        coords = {'time':tout, 'x': mykdv.x, 'z':np.arange(0, mykdv.Nz)}
+        attrs = {'long_name':'Density anomaly',\
+                'units':'kgm-3'}
+        dims = ('time','x','z')
+        Rhoda = xray.DataArray(density,
+                dims = dims,\
+                coords = coords,\
+                attrs = attrs,\
+            )
+
+        ds['Rho'] = Rhoda
+        print('Double setting density.')
+        ds['Rho'].values=density # This shouldn't be necessary but it is. xarray bug?
+
+    
 
     #if output_us:
     #    Uda = xray.DataArray(us,
@@ -110,11 +144,12 @@ def solve_kdv(rho, z, runtime,\
     #    ds.merge( xray.Dataset({'B_t':Bda}), inplace=True )
 
     if outfile is not None:
+        print(outfile)
         ds.to_netcdf(outfile)
 
     if myfunc is None:
-        return mykdv, Bda
+        return mykdv, Bda, density
     else:
-        return mykdv, Bda, output
+        return mykdv, Bda, density, output
 
 

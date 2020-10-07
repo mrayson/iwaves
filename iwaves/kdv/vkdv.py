@@ -5,6 +5,7 @@ Variable coefficient code
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy import sparse 
+import scipy.signal
 
 from .kdvimex import  KdVImEx as KdV
 from iwaves.utils import isw 
@@ -68,7 +69,9 @@ class vKdV(KdV):
         D10=None,
         D20=None,
         r20=None,
-        wavefunc=isw.sine, **kwargs):
+        wavefunc=isw.sine, 
+        Wn=None,
+        **kwargs):
 	
         # Initialise properties
         # (This is ugly but **kwargs are reserved for the superclass)
@@ -98,6 +101,7 @@ class vKdV(KdV):
         self.D20 = D20
         self.r20 = r20
         self.r20 = r20
+        self.Wn = Wn
 
         Nz = z.shape[0]
         Nx = x.shape[0]
@@ -163,11 +167,12 @@ class vKdV(KdV):
         phi0 = phi0 / np.abs(phi0).max()
         phi0 *= np.sign(phi0.sum())
  
+        print_n = self.Nsubset*(Nx//self.Nsubset)//(100/self.print_freq)
+        
         for ii in range(0, Nx, self.Nsubset):
-            point = Nx//100
-            if(ii % (5 * point) == 0):
-                if self.verbose:
-                    print('%3.1f %% complete...'%(float(ii)/Nx*100))
+            
+            if(ii % (print_n) == 0) and self.verbose:
+                    print('%3.1f %% complete...'%(self.print_freq*ii/print_n))
 
             #phi, cn = iwave_modes_sparse(N2[:,ii], dZ[ii], h[ii])
             #phi, cn = isw.iwave_modes(self.N2[:,ii], self.dZ[ii], h[ii])
@@ -212,11 +217,19 @@ class vKdV(KdV):
 
         for ii in range(self.Nx):
             phi_1 = Phi[:,ii]
+            c1 = Cn[ii]
             Alpha[ii] = calc_alpha(phi_1, c1, self.dZ[ii])
             Beta[ii] = calc_beta(phi_1, c1, self.dZ[ii])
             #Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
             Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
-                Cn[ii], Cn[0], self.dZ[ii], self.dZ[0])
+                c1, Cn[0], self.dZ[ii], self.dZ[0])
+
+        # Playing with filtering here. Q seems to really need it given the tiple derivative.
+        if not self.Wn is None:
+            b, a = scipy.signal.butter(4, self.Wn)
+            Q = scipy.signal.filtfilt(b, a, Q)
+
+            pass
 
         # Zero beta near the boundary
 
@@ -313,12 +326,13 @@ class vKdV(KdV):
         phi20 = np.zeros((self.Nz, self.Nx))
 
         if self.verbose:
+            print_n = self.Nsubset*(self.Nx//self.Nsubset)//(100/self.print_freq)
             print('Calculating nonlinear structure functions...')
+
         for ii in range(0, self.Nx, self.Nsubset):
-            point = self.Nx//100
-            if(ii % (5 * point) == 0):
-                if self.verbose:
-                    print('%3.1f %% complete...'%(float(ii)/self.Nx*100))
+
+            if(ii % (print_n) == 0) and self.verbose:
+                    print('%3.1f %% complete...'%(self.print_freq*ii/print_n))
 
             rhs01 = isw.calc_phi01_rhs(self.Phi[:,ii], \
                 self.c1[ii], self.N2[:,ii], self.dZ[ii])
@@ -501,6 +515,22 @@ class vKdV(KdV):
         w = -1* grad_z(psi, self.X, axis=1)
         return u.T, w.T
  
+    #####
+    # Printing routines
+    def print_params(self):
+        """
+        Print parameters of interests. 
+        """
+
+        printstr = 'Parameters (min/max):\n c1 = (%3.6f, %3.6f)\n'% (min(self.c1), max(self.c1))
+        printstr += ' epsilon = %3.6f\n'% (self.epsilon)
+        printstr += ' mu = %3.6f\n'% (self.mu)
+        printstr += ' r01 = (%3.6f, %3.6f)\n'% (min(self.r01), max(self.r01))
+        printstr += ' r10 = (%3.6f, %3.6f)\n'% (min(self.r10), max(self.r10))
+        printstr += ' r20 = (%3.6f, %3.6f)\n'% (min(self.r20), max(self.r20))
+
+        print(printstr)
+
     def to_Dataset(self):
         """
         Convert to an xray dataset object
