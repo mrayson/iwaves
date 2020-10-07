@@ -70,7 +70,8 @@ class KdV(object):
     
     # Bottom friction coefficient
     k_chezy = 0.0
-
+    drag_param = 0.0 
+    
     # Sponge layer for RHS
     spongedist = 0.
     spongetime = 300.

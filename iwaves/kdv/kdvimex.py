@@ -204,8 +204,12 @@ class KdVImEx(kdv.KdV):
             diags[3,:] = diags[3,:] + cff5*An2
             
         # Bottom friction parameterization (Holloway et al, 1997)
-        if self.k_chezy > 0:
-            cff = -self.k_chezy*self.c1 / self.H**2.
+        # if self.k_chezy > 0:
+        #     cff = -self.k_chezy*self.c1 / self.H**2.
+        #     diags[2,:] += cff * np.abs(An)
+        if self.drag_param > 0:
+            h = np.sqrt(self.Beta/self.Cn)
+            cff = -self.drag_param*self.Cn / h**2.
             diags[2,:] += cff * np.abs(An)
         
         return diags
