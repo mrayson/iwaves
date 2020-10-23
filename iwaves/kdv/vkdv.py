@@ -172,7 +172,7 @@ class vKdV(KdV):
         for ii in range(0, Nx, self.Nsubset):
             
             if(ii % (print_n) == 0) and self.verbose:
-                    print('%3.1f %% complete...'%(self.print_freq*ii/print_n))
+                print('%3.1f %% complete...'%(self.print_freq*ii/print_n))
 
             #phi, cn = iwave_modes_sparse(N2[:,ii], dZ[ii], h[ii])
             #phi, cn = isw.iwave_modes(self.N2[:,ii], self.dZ[ii], h[ii])
@@ -325,14 +325,14 @@ class vKdV(KdV):
         phi10 = np.zeros((self.Nz, self.Nx))
         phi20 = np.zeros((self.Nz, self.Nx))
 
+        print_n = self.Nsubset*(self.Nx//self.Nsubset)//(100/self.print_freq)
         if self.verbose:
-            print_n = self.Nsubset*(self.Nx//self.Nsubset)//(100/self.print_freq)
             print('Calculating nonlinear structure functions...')
 
         for ii in range(0, self.Nx, self.Nsubset):
 
             if(ii % (print_n) == 0) and self.verbose:
-                    print('%3.1f %% complete...'%(self.print_freq*ii/print_n))
+                print('%3.1f %% complete...'%(self.print_freq*ii/print_n))
 
             rhs01 = isw.calc_phi01_rhs(self.Phi[:,ii], \
                 self.c1[ii], self.N2[:,ii], self.dZ[ii])

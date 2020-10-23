@@ -48,6 +48,7 @@ def solve_kdv(rho, z, runtime,\
     nout = int(runtime//ntout)
     B = np.zeros((nout, mykdv.Nx))
     tout = np.zeros((nout,))
+    density = None
     if full_output:
         density = np.zeros((nout, mykdv.Nx, mykdv.Nz))
     output = []
