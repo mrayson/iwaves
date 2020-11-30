@@ -8,6 +8,8 @@ import iwaves.utils.isw as kdv
 #from iwaves.kdv.kdv import  KdV
 from iwaves.kdv.kdvimex import  KdVImEx as KdV
 
+from iwaves.kdv.vkdv import  vKdV as KdV
+
 import pdb
 
 
@@ -74,9 +76,9 @@ nu_H = 1.0
 
 #Cmax=0.02 # Explicit solver
 Cmax = 5 # IMEX solver
-dt = None
+dt = 10 # None
 
-nsteps = 25000//Cmax
+nsteps = 25000
 #runtime = 86400.
 #runtime = 200.
 #runtime = 1.
@@ -95,12 +97,18 @@ rhoz = double_tanh(betas, z)
 # In[5]:
 
 
-###
-# Intitialise the class
+#### Intitialise the class
 if nondim:
     runtime = runtime/Lw
 
-mykdv = KdV(rhoz, z, mode=mode,
+# vkdv
+x = np.linspace(0,1.5e5,Nx//2)
+h = H*np.ones_like(x) - 0.002*x
+
+mykdv = KdV(rhoz, z, \
+        h, x,\
+        Nsubset=20,\
+        mode=mode,\
         Cmax=Cmax,\
         Nx=Nx,\
         nondim=nondim,\

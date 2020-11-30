@@ -12,7 +12,6 @@ import iwaves.utils.isw as iwaves
 from . import kdv
 import numpy as np
 from scipy import sparse 
-from scipy.sparse import linalg
 from scipy import linalg as la
 
 import pdb
