@@ -23,6 +23,9 @@ class KdVCore(object):
     spongedist = 0.
     spongetime = 1e6
 
+    nonhydrostatic = 1.
+    nonlinear = 1.
+
     # Implicit /Explicit time-stepping parameters
 
     ## MCN - AX2+
@@ -82,6 +85,9 @@ class KdVCore(object):
         else:
             self.beta = self.beta
 
+        # This effectively turns on/off dispersion and nonlinear steepening
+        self.beta *= self.nonhydrostatic
+        self.alpha *= self.nonlinear
 
 
 

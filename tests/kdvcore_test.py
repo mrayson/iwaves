@@ -26,6 +26,9 @@ kdvargs = dict(
    spongedist = 5e3,
    spongetime = 60.,
 )
+
+h = ics.depth_tanh2(bathy_params, x) # CHANGED
+
 # Initialise the class
 mykdv = KdV(**kdvargs)
 print(mykdv.L_rhs.todense()[0:4,0:8])

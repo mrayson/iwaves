@@ -7,7 +7,8 @@ from scipy.interpolate import interp1d
 from scipy import sparse 
 import scipy.signal
 
-from .kdvimex import  KdVImEx as KdV
+#from .kdvimex import  KdVImEx as KdV
+from .kdvcore import  KdVCore as KdV
 from iwaves.utils import isw 
 from iwaves.utils.tools import grad_z, quadinterp
 
@@ -29,18 +30,19 @@ def calc_beta(phi, c, dz):
 
     return num/den
 
-def calc_Qamp_new(phi, c, dz):
+def calc_Qamp(phi, c, dz):
     """Small 2001 definition
     Normalizing is not necessary as it cancels out"""
     phi_z = np.gradient(phi, dz)
     return c**3. * np.trapz( phi_z**2., dx=dz)
 
-def calc_Qamp(phi, phi0, c, c0, dz, dz0):
+def calc_Qamp_H97(phi, phi0, c, c0, dz, dz0):
     """Holloway 1997 definition"""
     phi0_z = np.gradient(phi0, dz0)
     phi_z = np.gradient(phi, dz)
-    den = c0**3. * np.trapz( phi0_z**2., dx=dz0)
-    num = c**3. * np.trapz( phi_z**2., dx=dz)
+    # Grimshaw has c0 as the numerator
+    num = c0**3. * np.trapz( phi0_z**2., dx=dz0)
+    den = c**3. * np.trapz( phi_z**2., dx=dz)
 
     return num/den
 
@@ -52,10 +54,14 @@ class vKdV(KdV):
     Variable-coefficient (depth-dependent) KdV solver
     """
     verbose = True
+    print_freq = 5.
+    ekdv = False
 
     def __init__(self, rhoz, z, h, x, mode,\
         Nsubset=1,\
         fweight=1.,\
+        dx=None,
+        N=None,
         rhoZ=None,
         Cn=None,
         Phi=None,
@@ -71,7 +77,7 @@ class vKdV(KdV):
         r20=None,
         wavefunc=isw.sine, 
         Wn=None,
-        **kwargs):
+            **kwargs):
 	
         # Initialise properties
         # (This is ugly but **kwargs are reserved for the superclass)
@@ -115,7 +121,7 @@ class vKdV(KdV):
         #self.dZ = h/(Nz-1)
         self.dZ = np.abs(self.Z[1,:]-self.Z[0,:])
 
-        self.dx = np.diff(x).mean()
+        dx = np.diff(x).mean()
         self.X = x[np.newaxis,...] * np.ones((Nz,1))
 
         # Interpolate the density profile onto all points
@@ -127,21 +133,12 @@ class vKdV(KdV):
         # Only calculate the parameters if they aren't specified
         self.N2 = self.calc_N2()
         if self.Phi is None:
-            self.Phi, self.Cn, self.Alpha, self.Beta, self.Qterm, self.r20 =\
+            self.Phi, Cn, Alpha, Beta, self.Qterm, self.r20 =\
                 self.calc_vkdv_params(Nz, Nx)
 
+
         # Now initialise the class
-        KdV.__init__(self, rhoz, z, wavefunc=wavefunc, x=x, mode=mode, \
-            **kwargs)
-
-        self.c1 = self.Cn
-
-        # Change these to be consistent with the Lamb discretization
-        #self.r10 = self.Alpha/(-2*self.c1)
-        #self.r01 = -self.Beta
-
-        # 
-        self.dt_s = np.min(self.dt_s)
+        KdV.__init__(self, c=Cn, alpha=Alpha, beta=Beta, dx=dx, N=N,  **kwargs)
 
         #if self.ekdv:
         #    raise Exception('Extended-KdV not currently supported for spatially-varying model.')
@@ -220,16 +217,16 @@ class vKdV(KdV):
             c1 = Cn[ii]
             Alpha[ii] = calc_alpha(phi_1, c1, self.dZ[ii])
             Beta[ii] = calc_beta(phi_1, c1, self.dZ[ii])
-            #Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
-            Q[ii] = calc_Qamp(phi_1, Phi[:,0],\
-                c1, Cn[0], self.dZ[ii], self.dZ[0])
+            Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
+            #Q[ii] = calc_Qamp_H97(phi_1, Phi[:,0],\
+            #    c1, Cn[0], self.dZ[ii], self.dZ[0])
 
-        # Playing with filtering here. Q seems to really need it given the tiple derivative.
-        if not self.Wn is None:
-            b, a = scipy.signal.butter(4, self.Wn)
-            Q = scipy.signal.filtfilt(b, a, Q)
+        ## Playing with filtering here. Q seems to really need it given the tiple derivative.
+        #if not self.Wn is None:
+        #    b, a = scipy.signal.butter(4, self.Wn)
+        #    Q = scipy.signal.filtfilt(b, a, Q)
 
-            pass
+        #    pass
 
         # Zero beta near the boundary
 
@@ -252,65 +249,32 @@ class vKdV(KdV):
 	    - spatially variable coefficients
 	    - topographic amplification term
         """
-        #self.r10 = -self.Alpha
-        #self.r01 = -self.Beta
         diags = KdV.build_linear_diags(self)
 
         # Add on the Q-term
-        #diags[2,:] += self.Qterm
         self.add_topo_effects(diags)
         
-        # Adjust for the Dirichlet boundary conditions
-        #self.insert_bcs(diags)
-
-        ## Build the sparse matrix
-        #M = sparse.spdiags(diags, [-2,-1,0,1,2], self.Nx, self.Nx)
-
         return diags
 
     def add_topo_effects(self, diags):
         """
         Add the topographic effect terms to the LHS FD matrix
         """
-        #cff = self.Cn / (2*self.Qterm)
-        #dx2 = 1/(2*self.dx_s)
-        #dQdx = np.ones_like(self.Qterm)
-        #dQdx[1:-1] = (self.Qterm[2::] - self.Qterm[0:-2])*dx2
+        j=3
+        print('Calling topo term...')
 
-        #diags[2,:] += cff*dQdx
-        Q_x = np.gradient(self.Qterm, self.dx_s)
-        Qterm = self.Cn/(2.*self.Qterm) * Q_x
-        diags[2,:] += Qterm
+        #cff = self.c / (2*self.Qterm)
+        #dx2 = 1/(2*self.dx)
+        #dQdx = np.zeros_like(self.Qterm)
+        #dQdx[1:-1] = (self.Qterm[2:] - self.Qterm[0:-2])*dx2
+        #diags[j,:] -= cff*dQdx
 
-        #diags[1,:] += cff*self.Qterm*dx2
-        #diags[3,:] -= cff*self.Qterm*dx2
+        Q_x = np.gradient(self.Qterm, self.dx)
+        Qterm = self.c/(2.*self.Qterm) * Q_x
+        diags[j,:] -= Qterm
 
-    def add_bcs_rhs(self, RHS, cff, A_l):
-        # Add boundary condition terms to the RHS
-        r01 = -self.Beta[0]
-        c = self.Cn[0]
-
-        dx_i = 1/(2*self.dx_s)
-        dx3_i = 1./np.power(self.dx_s,3.)
-
-        #A_ll = A_l-cff*c*(self.B_n_m1[1]-A_l)*dx_i
-        #A_0 = A_l
-        # Quadratic interpolation
-        dx=self.dx_s
-        A_0 = quadinterp(dx,0,2*dx,3*dx,A_l,RHS[2],RHS[3])
-
-        # Left Dirichlet (linear terms)
-        
-        # Left Dirichlet (linear terms)
-        RHS[0] += cff*(c*A_0*dx_i)
-        if self.nonhydrostatic:
-            RHS[0] += cff*r01*1.0*A_0*dx3_i
-            RHS[0] -= cff*r01*0.5*A_l*dx3_i
-            RHS[1] -= cff*r01*0.5*A_0*dx3_i
-
-       
-        # Topographic amplification term...not neccessary as it's on the main diag
-
+        #diags[j-1,:] += cff*self.Qterm*dx2
+        #diags[j+1,:] -= cff*self.Qterm*dx2
 
     def calc_linearstructure(self):
     	return self.Phi, self.Cn
@@ -370,8 +334,6 @@ class vKdV(KdV):
 
         return phi01, phi10, phi20
 
-    def calc_coeffs(self):
-    	return -self.Beta, self.Alpha/(-2*self.Cn), self.r20, None
 
     def calc_buoyancy_coeffs(self):
 
@@ -409,8 +371,6 @@ class vKdV(KdV):
             F = interp1d(self.X[0,idx], D20[:,idx], kind=interpm,\
                     axis=1, fill_value='extrapolate')
             D20 = F(self.X[0,:])
-
-
 
         return D01, D10, D20
 
@@ -522,12 +482,10 @@ class vKdV(KdV):
         Print parameters of interests. 
         """
 
-        printstr = 'Parameters (min/max):\n c1 = (%3.6f, %3.6f)\n'% (min(self.c1), max(self.c1))
-        printstr += ' epsilon = %3.6f\n'% (self.epsilon)
-        printstr += ' mu = %3.6f\n'% (self.mu)
-        printstr += ' r01 = (%3.6f, %3.6f)\n'% (min(self.r01), max(self.r01))
-        printstr += ' r10 = (%3.6f, %3.6f)\n'% (min(self.r10), max(self.r10))
-        printstr += ' r20 = (%3.6f, %3.6f)\n'% (min(self.r20), max(self.r20))
+        printstr = 'Parameters (min/max):\n c1 = (%3.6f, %3.6f)\n'% (min(self.c), max(self.c))
+        printstr += ' alpha = (%3.6f, %3.6f)\n'% (min(self.alpha), max(self.alpha))
+        printstr += ' beta = (%3.6f, %3.6f)\n'% (min(self.beta), max(self.beta))
+        printstr += ' Q = (%3.6f, %3.6f)\n'% (min(self.Qterm), max(self.Qterm))
 
         print(printstr)
 
@@ -562,7 +520,7 @@ class vKdV(KdV):
         attrs = {'long_name':'Nonlinearity',\
                 'units':'m-1'}
                 
-        Alpha = xray.DataArray(self.Alpha,
+        Alpha = xray.DataArray(self.alpha,
             dims = dims,\
             coords = coords,\
             attrs = attrs,\
@@ -578,11 +536,10 @@ class vKdV(KdV):
         )
 
 
-
         attrs = {'long_name':'Dispersion',\
                 'units':'m-1'}
                 
-        Beta = xray.DataArray(self.Beta,\
+        Beta = xray.DataArray(self.beta,\
             dims = dims,\
             coords = coords,\
             attrs = attrs,\
@@ -591,7 +548,7 @@ class vKdV(KdV):
         attrs = {'long_name':'Phase Speed',\
                 'units':'m s-1'}
                 
-        Cn = xray.DataArray(self.Cn,
+        Cn = xray.DataArray(self.c,
             dims = dims,\
             coords = coords,\
             attrs = attrs,\
