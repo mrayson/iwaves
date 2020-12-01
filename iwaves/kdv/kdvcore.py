@@ -20,7 +20,10 @@ class KdVCore(object):
     dt = 1.
     t = 0.
 
-    # Implicit /Explicit parameters
+    spongedist = 0.
+    spongetime = 1e6
+
+    # Implicit /Explicit time-stepping parameters
 
     ## MCN - AX2+
     #c_im = 1/8.
@@ -63,6 +66,26 @@ class KdVCore(object):
         self.B = np.zeros((N,))
         self.B_n_p1 = np.zeros((N,))
 
+        # Set the parameters to be vectors
+        if isinstance(self.alpha,float):
+            self.alpha = self.alpha*np.ones((self.N,))
+        else:
+            self.alpha = self.alpha
+
+        if isinstance(self.c,float):
+            self.c = self.c*np.ones((self.N,))
+        else:
+            self.c = self.c
+
+        if isinstance(self.beta,float):
+            self.beta = self.beta*np.ones((self.N,))
+        else:
+            self.beta = self.beta
+
+
+
+
+
         # Construct the RHS linear operator (matrix)
         diags = self.build_linear_diags()
         self.L_rhs = sparse.spdiags(diags, [-3,-2,-1,0,1,2,3], self.N, self.N)
@@ -104,9 +127,9 @@ class KdVCore(object):
 
         # Add the BCs to the RHS
         cff0 = 0.5*(1 + self.c_im)*self.dt
-        RHS[0] += cff0 * self.c/(2*self.dx)*bc_left
-        RHS[0] += cff1 * self.c/(2*self.dx)*self.bcs[1]
-        RHS[0] += cff2 * self.c/(2*self.dx)*self.bcs[2]
+        RHS[0] += cff0 * self.c[0]/(2*self.dx)*bc_left
+        RHS[0] += cff1 * self.c[0]/(2*self.dx)*self.bcs[1]
+        RHS[0] += cff2 * self.c[0]/(2*self.dx)*self.bcs[2]
 
         # Use the direct banded matrix solver (faster)
         self.B_n_p1[:] = la.solve_banded( (3,3), self.L_lhs.data[::-1,:], RHS)
@@ -154,14 +177,22 @@ class KdVCore(object):
         Build the diagonal terms for the linear (implicit) terms 
         """
         N = self.N
+        dx = self.dx
         j = 3 # Index of the mid-point
+
         diags = np.zeros((7, self.N))
 
-        # Convective term
-        cff1 = -self.c/(2*self.dx)
+        # Advection term
+        cff1 = -self.c/(2*dx)
 
         diags[j-1, :] += -1*cff1
         diags[j+1, :] += 1*cff1
+
+        # Sponge term
+        x = np.arange(0,N*dx,dx)
+        rdist = x[-1] - x # Distance from right boundary
+        spongefac = -np.exp(-6*rdist/self.spongedist)/self.spongetime
+        diags[j,:] += spongefac 
 
         return diags
 
@@ -211,16 +242,16 @@ class KdVCore(object):
         """
         Calculate the nonlinear steepening term vectors
         """
-        cff = -self.alpha/(4*self.dx)   
+        cff = -1/(4*self.dx)   
         N = self.N
-
         rhs = np.zeros((N,))
+        alpha = self.alpha
 
         # Central difference for the interior points
-        rhs[1:N-1] = cff* (A[2:]*A[2:] - A[0:-2]*A[0:-2])
+        rhs[1:N-1] = cff*alpha[1:-1] * (A[2:]*A[2:] - A[0:-2]*A[0:-2])
 
         # Boundary term forward difference
-        rhs[0] = 0.5*cff*(A[1]*A[1] - A[0]*A[0])
+        rhs[0] = 0.5*cff*alpha[0]*(A[1]*A[1] - A[0]*A[0])
 
         return rhs
 

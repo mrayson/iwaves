@@ -11,15 +11,20 @@ from iwaves.kdv.kdvcore import  KdVCore as KdV
 ##########
 # Inputs
 a0 = -25.
-nsteps = 4560
+nsteps = 19000
+N = 2000
+#ones = np.ones((N,))
+ones = 1.
 
 kdvargs = dict(
-   N=2000,
-   c=1.5,
-   alpha=0.01,
-   beta=8000.,
+   N=N,
+   c=1.5*ones,
+   alpha=0.01*ones,
+   beta=8000.*ones,
    dx=50.,
    dt=10.,
+   spongedist = 5e3,
+   spongetime = 60.,
 )
 # Initialise the class
 mykdv = KdV(**kdvargs)
@@ -40,7 +45,7 @@ def bcfunc(a0,t):
 
 
 for ii in range(nsteps):
-    if mykdv.solve_step(bc_left=bcfunc2(a0,mykdv.t)) != 0:
+    if mykdv.solve_step(bc_left=bcfunc(a0,mykdv.t)) != 0:
         print('Blowing up at step: %d'%ii)
         break
 
