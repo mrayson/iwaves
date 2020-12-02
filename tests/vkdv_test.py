@@ -7,6 +7,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from iwaves.kdv.vkdv import  vKdV as KdV
 
+# IMEX options
+imex={
+        'MCN_AX2':(1/8., 3/8.),
+        'AM2_AX2':(1/2., 1/2.),
+        'AI2_AB3':(3/2., 5/6.),
+        'BDF2_BX2':(0.,0.),
+        'BDF2_BX2s':(0.,1/2.),
+        'BI2_BC3':(1/3.,2/3.),
+}
+
 def rho_double_tanh(beta, z):
     """
     Double hyperbolic tangent 
@@ -33,7 +43,6 @@ def depth_tanh(beta, x):
 ##########
 # Inputs
 a0 = 1.
-nsteps = 12000
 
 rho_params =[1023.68,
      1.22,
@@ -43,19 +52,26 @@ rho_params =[1023.68,
      40.2] # 1st April 2017
 
 H = 400
-h0 = 225
-Nz = 100
-bathy_params = [H, h0, 90e3, 70e3]       
+h0 = 300
+Nz = 50
+bathy_params = [H, h0, 150e3, 100e3]       
 
+runtime = 24000*15
 
-dt = 10.
+dt = 15.
+nsteps = int(runtime//dt)
 
 N = 6000
-dx = 25.
+dx = 50.
 # L_d = N*dx
 
 mode = 0
+imexscheme = 'AM2_AX2'
+#imexscheme = 'MCN_AX2'
 ###
+print(imex.keys())
+c_im = imex[imexscheme][0]
+b_ex = imex[imexscheme][1]
 
 kdvargs = dict(
    N=N,
@@ -66,6 +82,8 @@ kdvargs = dict(
    Nsubset = 10,
    nonhydrostatic=0.,
    nonlinear=0.,
+   c_im=c_im,
+   b_ex=b_ex,
 )
 
 z = np.linspace(-H,0,Nz)
@@ -83,16 +101,17 @@ h = depth_tanh(bathy_params, x)
 
 ## Initialise the class
 mykdv = KdV(rhoz, z, h, x, mode, **kdvargs)
+print(mykdv.c_im, mykdv.b_ex)
 
-#plt.figure()
-#plt.subplot(411)
-#plt.plot( mykdv.x, mykdv.alpha)
-#plt.subplot(412)
-#plt.plot( mykdv.x, mykdv.beta)
-#plt.subplot(413)
-#plt.plot( mykdv.x, mykdv.c)
-#plt.subplot(414)
-#plt.plot( mykdv.x, -mykdv.h)
+plt.figure()
+plt.subplot(411)
+plt.plot( mykdv.x, mykdv.alpha)
+plt.subplot(412)
+plt.plot( mykdv.x, 1/np.sqrt(mykdv.Qterm))
+plt.subplot(413)
+plt.plot( mykdv.x, mykdv.c)
+plt.subplot(414)
+plt.plot( mykdv.x, -mykdv.h)
 #plt.show()
 
 
@@ -107,7 +126,7 @@ def bcfunc2(a0,t):
     return a0*np.exp(-((t - t0)/T)**2.)
 
 def bcfunc(a0,t):
-    T = 6*3600
+    T = 12*3600
     omega = 2*np.pi/T
     return a0*np.sin(omega*t)
 
@@ -120,8 +139,8 @@ plt.figure()
 plt.subplot(211)
 plt.plot(mykdv.x, mykdv.B_n_p1)
 plt.title(nsteps)
-plt.plot(mykdv.x, np.abs(a0)*mykdv.Qterm[0]/mykdv.Qterm)
-#plt.plot(mykdv.x, np.abs(a0)*mykdv.Qterm)
+#plt.plot(mykdv.x, np.abs(a0)/(np.sqrt(mykdv.Qterm/mykdv.Qterm[0])))
+plt.plot(mykdv.x, np.abs(a0)/np.sqrt(mykdv.Qterm))
 plt.grid(b=True)
 plt.subplot(212)
 plt.plot(mykdv.x, -mykdv.h)

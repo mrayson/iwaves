@@ -163,12 +163,13 @@ class KdVCore(object):
         This has the form:
             [1 - 0.5(1+a)*dt*L ] * u_n_p1
         """
+        j=3
         diags1 = self.build_linear_diags()
         diags1 += self.build_dispersion_diags()
 
         # Ones down primary diagonal
         diags2 = np.zeros_like(diags1)
-        diags2[3,:] = 1.
+        diags2[j,:] = 1.
 
         cff = self.dt*(1+self.c_im)*0.5        
         diags =  diags2 - cff*diags1

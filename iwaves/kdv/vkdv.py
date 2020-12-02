@@ -41,8 +41,8 @@ def calc_Qamp_H97(phi, phi0, c, c0, dz, dz0):
     phi0_z = np.gradient(phi0, dz0)
     phi_z = np.gradient(phi, dz)
     # Grimshaw has c0 as the numerator
-    num = c0**3. * np.trapz( phi0_z**2., dx=dz0)
-    den = c**3. * np.trapz( phi_z**2., dx=dz)
+    den = c0**3. * np.trapz( phi0_z**2., dx=dz0)
+    num = c**3. * np.trapz( phi_z**2., dx=dz)
 
     return num/den
 
@@ -217,9 +217,9 @@ class vKdV(KdV):
             c1 = Cn[ii]
             Alpha[ii] = calc_alpha(phi_1, c1, self.dZ[ii])
             Beta[ii] = calc_beta(phi_1, c1, self.dZ[ii])
-            Q[ii] = calc_Qamp(phi_1, Cn[ii], self.dZ[ii])
-            #Q[ii] = calc_Qamp_H97(phi_1, Phi[:,0],\
-            #    c1, Cn[0], self.dZ[ii], self.dZ[0])
+            #Q[ii] = calc_Qamp(phi_1, c1, self.dZ[ii])
+            Q[ii] = calc_Qamp_H97(phi_1, Phi[:,0],\
+                c1, Cn[0], self.dZ[ii], self.dZ[0])
 
         ## Playing with filtering here. Q seems to really need it given the tiple derivative.
         #if not self.Wn is None:
@@ -263,15 +263,15 @@ class vKdV(KdV):
         j=3
         print('Calling topo term...')
 
-        #cff = self.c / (2*self.Qterm)
-        #dx2 = 1/(2*self.dx)
-        #dQdx = np.zeros_like(self.Qterm)
-        #dQdx[1:-1] = (self.Qterm[2:] - self.Qterm[0:-2])*dx2
-        #diags[j,:] -= cff*dQdx
+        cff = self.c / (2*self.Qterm)
+        dx2 = 1/(2*self.dx)
+        dQdx = np.zeros_like(self.Qterm)
+        dQdx[1:-1] = (self.Qterm[2:] - self.Qterm[0:-2])*dx2
+        diags[j,:] -= cff*dQdx
 
-        Q_x = np.gradient(self.Qterm, self.dx)
-        Qterm = self.c/(2.*self.Qterm) * Q_x
-        diags[j,:] -= Qterm
+        #Q_x = np.gradient(self.Qterm, self.dx)
+        #Qterm = self.c/(2.*self.Qterm) * Q_x
+        #diags[j,:] -= Qterm
 
         #diags[j-1,:] += cff*self.Qterm*dx2
         #diags[j+1,:] -= cff*self.Qterm*dx2
