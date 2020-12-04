@@ -42,7 +42,7 @@ def depth_tanh(beta, x):
 
 ##########
 # Inputs
-a0 = 1.
+a0 = 15.
 
 rho_params =[1023.68,
      1.22,
@@ -51,17 +51,17 @@ rho_params =[1023.68,
      73.1,
      40.2] # 1st April 2017
 
-H = 400
-h0 = 300
+H = 500
+h0 = 250
 Nz = 50
-bathy_params = [H, h0, 150e3, 100e3]       
+bathy_params = [H, h0, 75e3, 70e3]       
 
-runtime = 24000*15
+runtime = 12000*15
 
 dt = 15.
 nsteps = int(runtime//dt)
 
-N = 6000
+N = 3000
 dx = 50.
 # L_d = N*dx
 
@@ -80,8 +80,8 @@ kdvargs = dict(
    spongedist = 5e3,
    spongetime = 60.,
    Nsubset = 10,
-   nonhydrostatic=0.,
-   nonlinear=0.,
+   nonhydrostatic=1.,
+   nonlinear=1.,
    c_im=c_im,
    b_ex=b_ex,
 )
@@ -103,16 +103,16 @@ h = depth_tanh(bathy_params, x)
 mykdv = KdV(rhoz, z, h, x, mode, **kdvargs)
 print(mykdv.c_im, mykdv.b_ex)
 
-plt.figure()
-plt.subplot(411)
-plt.plot( mykdv.x, mykdv.alpha)
-plt.subplot(412)
-plt.plot( mykdv.x, 1/np.sqrt(mykdv.Qterm))
-plt.subplot(413)
-plt.plot( mykdv.x, mykdv.c)
-plt.subplot(414)
-plt.plot( mykdv.x, -mykdv.h)
-#plt.show()
+#plt.figure()
+#plt.subplot(411)
+#plt.plot( mykdv.x, mykdv.alpha)
+#plt.subplot(412)
+#plt.plot( mykdv.x, 1/np.sqrt(mykdv.Q))
+#plt.subplot(413)
+#plt.plot( mykdv.x, mykdv.c)
+#plt.subplot(414)
+#plt.plot( mykdv.x, -mykdv.h)
+##plt.show()
 
 
 ##print(mykdv.L_rhs.todense()[0:4,0:8])
@@ -140,7 +140,7 @@ plt.subplot(211)
 plt.plot(mykdv.x, mykdv.B_n_p1)
 plt.title(nsteps)
 #plt.plot(mykdv.x, np.abs(a0)/(np.sqrt(mykdv.Qterm/mykdv.Qterm[0])))
-plt.plot(mykdv.x, np.abs(a0)/np.sqrt(mykdv.Qterm))
+plt.plot(mykdv.x, np.abs(a0)/np.sqrt(mykdv.Q))
 plt.grid(b=True)
 plt.subplot(212)
 plt.plot(mykdv.x, -mykdv.h)

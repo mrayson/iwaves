@@ -12,22 +12,31 @@ from iwaves.kdv.kdvcore import  KdVCore as KdV
 # Inputs
 a0 = -25.
 nsteps = 19000
-N = 2000
+N = 4000
+dx = 50.
 #ones = np.ones((N,))
 ones = 1.
 
+# Spatially-varying c
+L = N*dx
+c1 = 1.
+c0 = 2.
+x = np.arange(0,L,dx)
+c = c0 - (c0-c1)/L*x
+
 kdvargs = dict(
    N=N,
-   c=1.5*ones,
+   c=c,
    alpha=0.01*ones,
    beta=8000.*ones,
-   dx=50.,
+   dx=dx,
    dt=10.,
    spongedist = 5e3,
    spongetime = 60.,
+   nonhydrostatic=0.,
+   nonlinear=0.,
 )
 
-h = ics.depth_tanh2(bathy_params, x) # CHANGED
 
 # Initialise the class
 mykdv = KdV(**kdvargs)
@@ -54,7 +63,8 @@ for ii in range(nsteps):
 
 
 plt.figure()
-plt.plot(mykdv.B_n_p1)
+plt.plot(x,mykdv.B_n_p1)
+plt.plot([x[0],x[-1]],[a0,a0],'k--')
 plt.title(nsteps)
 plt.show()
 

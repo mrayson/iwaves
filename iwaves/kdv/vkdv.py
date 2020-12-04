@@ -67,7 +67,7 @@ class vKdV(KdV):
         Phi=None,
         Alpha=None,
         Beta=None,
-        Qterm=None,
+        Q=None,
         phi01=None,
         phi10=None,
         phi20=None,
@@ -98,7 +98,7 @@ class vKdV(KdV):
         self.Phi = Phi
         self.Alpha = Alpha
         self.Beta = Beta
-        self.Qterm = Qterm
+        self.Q = Q
         self.phi01 = phi01
         self.phi10 = phi10
         self.phi20 = phi20
@@ -133,7 +133,7 @@ class vKdV(KdV):
         # Only calculate the parameters if they aren't specified
         self.N2 = self.calc_N2()
         if self.Phi is None:
-            self.Phi, Cn, Alpha, Beta, self.Qterm, self.r20 =\
+            self.Phi, Cn, Alpha, Beta, self.Q, self.r20 =\
                 self.calc_vkdv_params(Nz, Nx)
 
 
@@ -260,13 +260,12 @@ class vKdV(KdV):
         """
         Add the topographic effect terms to the LHS FD matrix
         """
-        j=3
-        print('Calling topo term...')
+        j=self._j
 
-        cff = self.c / (2*self.Qterm)
+        cff = self.c / (2*self.Q)
         dx2 = 1/(2*self.dx)
-        dQdx = np.zeros_like(self.Qterm)
-        dQdx[1:-1] = (self.Qterm[2:] - self.Qterm[0:-2])*dx2
+        dQdx = np.zeros_like(self.Q)
+        dQdx[1:-1] = (self.Q[2:] - self.Q[0:-2])*dx2
         diags[j,:] -= cff*dQdx
 
         #Q_x = np.gradient(self.Qterm, self.dx)
@@ -485,7 +484,7 @@ class vKdV(KdV):
         printstr = 'Parameters (min/max):\n c1 = (%3.6f, %3.6f)\n'% (min(self.c), max(self.c))
         printstr += ' alpha = (%3.6f, %3.6f)\n'% (min(self.alpha), max(self.alpha))
         printstr += ' beta = (%3.6f, %3.6f)\n'% (min(self.beta), max(self.beta))
-        printstr += ' Q = (%3.6f, %3.6f)\n'% (min(self.Qterm), max(self.Qterm))
+        printstr += ' Q = (%3.6f, %3.6f)\n'% (min(self.Q), max(self.Q))
 
         print(printstr)
 
@@ -557,7 +556,7 @@ class vKdV(KdV):
         attrs = {'long_name':'Topographic amplification term',\
                 'units':'xx'}
                 
-        Qterm = xray.DataArray(self.Qterm,
+        Qterm = xray.DataArray(self.Q,
             dims = dims,\
             coords = coords,\
             attrs = attrs,\
@@ -656,17 +655,17 @@ class vKdV(KdV):
         #########
         # Dictionary of attributes
         # List of attributes
-        saveattrs = ['Nx',\
-                'L_d',\
-                'a0',\
-                'Lw',\
-                'x0',\
+        saveattrs = ['N',\
+                #'L_d',\
+                #'a0',\
+                #'Lw',\
+                #'x0',\
                 'mode',\
-                'Cmax',\
-                'nu_H',\
-                'dx_s',\
-                'dz_s',\
-                'dt_s',\
+                #'Cmax',\
+                #'nu_H',\
+                'dx',\
+                #'dz_s',\
+                'dt',\
                 'spongedist',\
                 #'c1',\
                 #'mu',\
@@ -692,7 +691,7 @@ class vKdV(KdV):
         return xray.Dataset({'B':B,\
                         'Alpha':Alpha,\
                         'Beta':Beta,\
-                        'Qterm':Qterm,\
+                        'Q':Qterm,\
                         'r20':r20,\
                         'h':h,\
                         'Cn':Cn,\

@@ -26,6 +26,8 @@ class KdVCore(object):
     nonhydrostatic = 1.
     nonlinear = 1.
 
+    _j = 3 # Number of diagonals
+
     # Implicit /Explicit time-stepping parameters
 
     ## MCN - AX2+
@@ -94,10 +96,11 @@ class KdVCore(object):
 
         # Construct the RHS linear operator (matrix)
         diags = self.build_linear_diags()
-        self.L_rhs = sparse.spdiags(diags, [-3,-2,-1,0,1,2,3], self.N, self.N)
+        cols = [ii for ii in range(-self._j, self._j+1)]
+        self.L_rhs = sparse.spdiags(diags, cols, self.N, self.N)
 
         diags = self.build_dispersion_diags()
-        self.L_rhs += sparse.spdiags(diags, [-3,-2,-1,0,1,2,3], self.N, self.N)
+        self.L_rhs += sparse.spdiags(diags, cols, self.N, self.N)
         
 
         # Construct the LHS
@@ -109,6 +112,7 @@ class KdVCore(object):
         """
         status = 0
         self.t += self.dt
+
 
         ### Construct the RHS vector
         # Implicit terms
@@ -138,7 +142,7 @@ class KdVCore(object):
         RHS[0] += cff2 * self.c[0]/(2*self.dx)*self.bcs[2]
 
         # Use the direct banded matrix solver (faster)
-        self.B_n_p1[:] = la.solve_banded( (3,3), self.L_lhs.data[::-1,:], RHS)
+        self.B_n_p1[:] = la.solve_banded( (self._j,self._j), self.L_lhs.data[::-1,:], RHS)
 
         # Check solutions
         if np.any( np.isnan(self.B_n_p1)):
@@ -175,7 +179,8 @@ class KdVCore(object):
         diags =  diags2 - cff*diags1
         
         # Build the sparse matrix
-        M = sparse.spdiags(diags, [-3,-2,-1,0,1,2,3], self.N, self.N)
+        cols = [ii for ii in range(-self._j, self._j+1)]
+        M = sparse.spdiags(diags, cols, self.N, self.N)
 
         return M, diags
 
@@ -185,15 +190,16 @@ class KdVCore(object):
         """
         N = self.N
         dx = self.dx
-        j = 3 # Index of the mid-point
+        j = self._j # Index of the mid-point
 
-        diags = np.zeros((7, self.N))
+        diags = np.zeros((2*self._j+1, self.N))
 
         # Advection term
-        cff1 = -self.c/(2*dx)
+        cff1 = -1/(2*dx)
 
-        diags[j-1, :] += -1*cff1
-        diags[j+1, :] += 1*cff1
+        # Need to stagger these diagonals so lower and upper bands are symmetric
+        diags[j-1, :-2] += -1*cff1*self.c[2:]
+        diags[j+1, :] += 1*cff1*self.c[:]
 
         # Sponge term
         x = np.arange(0,N*dx,dx)
@@ -208,8 +214,8 @@ class KdVCore(object):
         Build diagonals for the dispersion term
         """
         N = self.N
-        j = 3 # Index of the mid-point
-        diags = np.zeros((7, self.N))
+        j = self._j # Index of the mid-point
+        diags = np.zeros((2*self._j+1, self.N))
 
         dx3 = np.power(self.dx, 3.)
         cff = -self.beta/(2*dx3)
@@ -241,7 +247,8 @@ class KdVCore(object):
         diags[j,0:2] = 0 
         diags[j+1,1:3] = 0 
         diags[j+2,2:4] = 0 
-        diags[j+3,3:5] = 0 
+        if self._j>2:
+            diags[j+3,3:5] = 0 
 
         return diags
 
