@@ -56,10 +56,12 @@ h0 = 250
 Nz = 50
 bathy_params = [H, h0, 75e3, 70e3]       
 
-runtime = 12000*15
 
 dt = 15.
+runtime = 6000*dt
+
 nsteps = int(runtime//dt)
+print(nsteps)
 
 N = 3000
 dx = 50.
@@ -134,6 +136,10 @@ for ii in range(nsteps):
     if mykdv.solve_step(bc_left=bcfunc(a0,mykdv.t)) != 0:
         print('Blowing up at step: %d'%ii)
         break
+
+# Test the xarray function
+print(mykdv.to_Dataset())
+mykdv.print_params()
 
 plt.figure()
 plt.subplot(211)

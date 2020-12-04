@@ -115,6 +115,9 @@ class vKdV(KdV):
         self.Nz = Nz
         self.Nx = Nx
 
+        self.z = z
+        self.rhoz = rhoz
+
         ## Create a 2D array of vertical coordinates
         self.Z = -np.linspace(0,1,Nz)[:, np.newaxis] * h[np.newaxis,:]
 
@@ -220,23 +223,6 @@ class vKdV(KdV):
             #Q[ii] = calc_Qamp(phi_1, c1, self.dZ[ii])
             Q[ii] = calc_Qamp_H97(phi_1, Phi[:,0],\
                 c1, Cn[0], self.dZ[ii], self.dZ[0])
-
-        ## Playing with filtering here. Q seems to really need it given the tiple derivative.
-        #if not self.Wn is None:
-        #    b, a = scipy.signal.butter(4, self.Wn)
-        #    Q = scipy.signal.filtfilt(b, a, Q)
-
-        #    pass
-
-        # Zero beta near the boundary
-
-        # Weight the nonlinear terms
-        #Alpha *= self.fweight
-        #Beta *= self.fweight
-
-        ## Calculate the Q-term in the equation here
-        #Q_x = np.gradient(Q, self.dx)
-        #Qterm = Cn/(2.*Q) * Q_x
 
         return Phi, Cn ,Alpha, Beta, Q, r20
 
