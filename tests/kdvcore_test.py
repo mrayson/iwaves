@@ -24,23 +24,32 @@ c0 = 2.
 x = np.arange(0,L,dx)
 c = c0 - (c0-c1)/L*x
 
+# Spatially-varying beta
+L = N*dx
+c1 = 2000.
+c0 = 15000.
+x = np.arange(0,L,dx)
+beta = c0 - (c0-c1)/L*x
+
 kdvargs = dict(
    N=N,
    c=c,
    alpha=0.01*ones,
-   beta=8000.*ones,
+   beta=beta,
    dx=dx,
    dt=10.,
    spongedist = 5e3,
    spongetime = 60.,
-   nonhydrostatic=0.,
-   nonlinear=0.,
+   nonhydrostatic=1.,
+   nonlinear=1.,
 )
 
 
 # Initialise the class
 mykdv = KdV(**kdvargs)
-print(mykdv.L_rhs.todense()[0:4,0:8])
+print(mykdv.L_rhs.todense()[0:3,0:8])
+#print(mykdv.L_rhs.todense()[3:5,0:8])
+#print(mykdv.L_rhs.todense()[-2:-1,-8:])
 #print(mykdv.L_lhs.todense())
 #print(mykdv.L_rhs.shape, mykdv.B.shape)
 #print(mykdv.L_beta.todense()[0:4,0:8])

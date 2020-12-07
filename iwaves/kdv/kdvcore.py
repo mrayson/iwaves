@@ -91,9 +91,6 @@ class KdVCore(object):
         self.beta *= self.nonhydrostatic
         self.alpha *= self.nonlinear
 
-
-
-
         # Construct the RHS linear operator (matrix)
         diags = self.build_linear_diags()
         cols = [ii for ii in range(-self._j, self._j+1)]
@@ -101,7 +98,6 @@ class KdVCore(object):
 
         diags = self.build_dispersion_diags()
         self.L_rhs += sparse.spdiags(diags, cols, self.N, self.N)
-        
 
         # Construct the LHS
         self.L_lhs, diags = self.build_lhs_matrix()
@@ -137,9 +133,7 @@ class KdVCore(object):
 
         # Add the BCs to the RHS
         cff0 = 0.5*(1 + self.c_im)*self.dt
-        RHS[0] += cff0 * self.c[0]/(2*self.dx)*bc_left
-        RHS[0] += cff1 * self.c[0]/(2*self.dx)*self.bcs[1]
-        RHS[0] += cff2 * self.c[0]/(2*self.dx)*self.bcs[2]
+        self.add_bcs(RHS, bc_left, cff0, cff1, cff2)
 
         # Use the direct banded matrix solver (faster)
         self.B_n_p1[:] = la.solve_banded( (self._j,self._j), self.L_lhs.data[::-1,:], RHS)
@@ -159,6 +153,15 @@ class KdVCore(object):
         self.bcs[0] = bc_left
 
         return status
+
+    def add_bcs(self, RHS, bc_left, cff0 ,cff1, cff2):
+        """
+        Add boundary conditions to the RHS vector
+        """
+        RHS[0] += cff0 * self.c[0]/(2*self.dx)*bc_left
+        RHS[0] += cff1 * self.c[0]/(2*self.dx)*self.bcs[1]
+        RHS[0] += cff2 * self.c[0]/(2*self.dx)*self.bcs[2]
+
 
     def build_lhs_matrix(self):
         """
@@ -218,10 +221,10 @@ class KdVCore(object):
         diags = np.zeros((2*self._j+1, self.N))
 
         dx3 = np.power(self.dx, 3.)
-        cff = -self.beta/(2*dx3)
 
-        #diags[j-2,:] = np.arange(1,N+1)
-        #diags[j-1,:] = np.arange(1,N+1)
+        ## This tells us how the diagonal matrix construction works
+        #diags[j-2,:-4] = np.arange(1,N+1)[4:]
+        #diags[j-1,:-2] = np.arange(1,N+1)[2:]
         #diags[j+1,:] = np.arange(1,N+1)
         #diags[j+2,:] = np.arange(1,N+1)
 
@@ -230,25 +233,36 @@ class KdVCore(object):
         #diags[j+2,2:4] = 13
         #diags[j+3,3:5]= 14
 
-        diags[j-2,:] += -1*cff
-        diags[j-1,:] += 2*cff
-        diags[j+1,:] += -2*cff
-        diags[j+2,:] += 1*cff
+
+        # Original method had assymmetric diagonals
+        #cff = -self.beta/(2*dx3)
+        #diags[j-2,:] += -1*cff
+        #diags[j-1,:] += 2*cff
+        #diags[j+1,:] += -2*cff
+        #diags[j+2,:] += 1*cff
+
+        # Need to stagger these diagonals so lower and upper bands are symmetric
+        cff = -1/(2*dx3)
+        beta = self.beta
+        diags[j-2,:-4] += -1*cff*beta[4:]
+        diags[j-1,:-2] += 2*cff*beta[2:]
+        diags[j+1,:] += -2*cff*beta
+        diags[j+2,:] += 1*cff*beta
 
         ## Left boundary - use forward differencing
-        #diags[j-1,0] = 0
-        #diags[j,0:2] = -2*cff
-        #diags[j+1,1:3] = 6*cff
-        #diags[j+2,2:4] = -6*cff
-        #diags[j+3,3:5] = 2*cff
+        diags[j-1,0] = 0
+        diags[j,0:2] = -2*cff*beta[0]
+        diags[j+1,1:3] = 6*cff*beta[0]
+        diags[j+2,2:4] = -6*cff*beta[0]
+        diags[j+3,3:5] = 2*cff*beta[0]
 
         # Zero first two points
-        diags[j-1,0] = 0
-        diags[j,0:2] = 0 
-        diags[j+1,1:3] = 0 
-        diags[j+2,2:4] = 0 
-        if self._j>2:
-            diags[j+3,3:5] = 0 
+        #diags[j-1,0] = 0
+        #diags[j,0:2] = 0 
+        #diags[j+1,1:3] = 0 
+        #diags[j+2,2:4] = 0 
+        #if self._j>2:
+        #    diags[j+3,3:5] = 0 
 
         return diags
 
