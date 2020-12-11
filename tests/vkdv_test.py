@@ -42,23 +42,23 @@ def depth_tanh(beta, x):
 
 ##########
 # Inputs
-a0 = 20.
+a0 = 27.
 
 rho_params =[1023.68,
-     1.32,
+     1.22,
      156.7,
      53.6,
      73.1,
      40.2] # 1st April 2017
 
 H = 600
-h0 = 400
+h0 = 450
 Nz = 50
 bathy_params = [H, h0, 75e3, 70e3]       
 
 
-dt = 10.
-runtime = 12000*15
+dt = 15.
+runtime = 11000*15
 
 nsteps = int(runtime//dt)
 print(nsteps)
@@ -128,7 +128,7 @@ def bcfunc2(a0,t):
     return a0*np.exp(-((t - t0)/T)**2.)
 
 def bcfunc(a0,t):
-    T = 4*3600
+    T = 12*3600
     omega = 2*np.pi/T
     return a0*np.sin(omega*t)
 
