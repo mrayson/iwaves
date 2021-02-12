@@ -77,6 +77,7 @@ class vKdV(KdV):
         r20=None,
         wavefunc=isw.sine, 
         Wn=None,
+        m_star=0, # Bottom drag
             **kwargs):
 	
         # Initialise properties
@@ -108,6 +109,7 @@ class vKdV(KdV):
         self.r20 = r20
         self.r20 = r20
         self.Wn = Wn
+        self.m_star = m_star
 
         Nz = z.shape[0]
         Nx = x.shape[0]
@@ -260,6 +262,21 @@ class vKdV(KdV):
 
         #diags[j-1,:] += cff*self.Qterm*dx2
         #diags[j+1,:] -= cff*self.Qterm*dx2
+
+    def calc_nonlinear_rhs(self, A):
+        """
+        AZ ATTEMPTING A PARENT FUNCTION OVERLOAD TO INCLUDE DRAG
+        """
+        
+        rhs = KdV.calc_nonlinear_rhs(self, A)
+
+        # print('Adding drag')
+
+        h2 = self.beta/self.c
+        cff = -self.m_star*self.c / h2
+        rhs += cff * np.abs(A)*A
+
+        return rhs
 
     def calc_linearstructure(self):
     	return self.Phi, self.Cn
@@ -500,8 +517,6 @@ class vKdV(KdV):
             attrs = attrs,\
         )
 
- 
-
         attrs = {'long_name':'Nonlinearity',\
                 'units':'m-1'}
                 
@@ -662,6 +677,7 @@ class vKdV(KdV):
                 'ekdv',\
                 'nonlinear',\
                 'nonhydrostatic',\
+                'm_star',\
         ]
 
         attrs = {}
