@@ -6,7 +6,7 @@
 
 # Tutorial
 
- - An example ipython notebook is in `examples` and viewed [here](examples/vkdv_example.ipynb)
+ - An example ipython notebook is in `examples` and viewed [here](examples/vkdv_example.ipynb) or run interactively (*click the Binder button...*)[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mrayson/iwaves/HEAD?labpath=examples%2Fvkdv_example.ipynb)
 
 ---
 
