@@ -4,6 +4,10 @@
  - Calculate linear dynamic modes
  - Fit dynamic modes to mooring data
 
+# Tutorial
+
+ - An example ipython notebook is in `examples` and viewed [here](examples/vkdv_example.ipynb)
+
 ---
 
 # Installation
@@ -27,10 +31,6 @@
 
 ---
 
-# Documentation
-
- - An example ipython notebook is in `tests` and viewed [here](https://nbviewer.jupyter.org/urls/bitbucket.org/mrayson/iwaves/raw/c42dd64008eb014049b80031c07eb832d372f57f/tests/test_kdvlamb.ipynb)
- - A draft paper describing the numerical scheme is [here](https://www.overleaf.com/read/wvvthjwgtxft)
 ---
 
 Matt Rayson
