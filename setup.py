@@ -9,7 +9,7 @@ class BinaryDistribution(Distribution):
 
 		
 setup(name='iwaves',
-      version='latest',
+      version='0.1.0',
       description='Internal wave KdV solver',
       author='Matt Rayson',
       author_email='matt.rayson@uwa.edu.au',
