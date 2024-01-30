@@ -2,4 +2,5 @@
 from .kdvimex import KdVImEx
 from .kdvdamped import KdVDamp
 from .kdv import KdV
+from .rvkdv import rvKdV
 
