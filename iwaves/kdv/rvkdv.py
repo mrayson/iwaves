@@ -15,13 +15,23 @@ class rvKdV(vKdV):
 
         RHS of the rotation equation is:
         $$
-        \int_{-\infty}^{x}\frac{f^2}{2c}A\ dx'
+        \frac{f^2}{2c}\left[ v(x,t) -\langle v \rangle \right]
+        $$
+        where
+        $$v(x,t)=\int_{0}^{x} A(x',t)\ dx'$$
+        and
+        $$
+        \langle v \rangle = \frac{1}{L}\int_{0}^{L} v(x,t)\ dx
         $$
         """
         rhs = vKdV.calc_nonlinear_rhs(self, A)
 
         cff = 0.5*self.cor_f*self.cor_f / self.c 
 
-        rhs -= np.cumsum(cff * A * self.dx)
+        #rhs -= np.cumsum(cff * A * self.dx)
+        v = np.cumsum(A) * self.dx
+        L = self.N *  self.dx
+        v_bar = np.sum(v)/L
+        rhs -= cff*(v-v_bar)
 
         return rhs
